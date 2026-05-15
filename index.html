@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FOOD FIRST</title>
   <link rel="stylesheet" href="./common.css" />
+  <script src="./config.js"></script>
+  <script>
+    window.addEventListener("load", () => {
+      const s = document.createElement("script");
+      s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${CONFIG.KAKAO_MAP_KEY}&autoload=false`;
+      s.onload = () => kakao.maps.load(() => { window._kakaoReady = true; });
+      document.head.appendChild(s);
+    });
+  </script>
   <style>
     /* ── 카테고리 탭 ── */
     .category-tabs {
@@ -335,20 +344,30 @@
       flex-shrink: 0;
     }
 
-    .location-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 0;
-      cursor: pointer;
+    .modal-map-wrap {
+      width: 100%;
+      height: 200px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--color-bg-input);
+      margin-bottom: 8px;
     }
 
-    .location-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 500;
+    .modal-map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .modal-map-link {
+      font-size: 12px;
+      color: var(--color-text-tertiary);
+      text-align: right;
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
+
+    .modal-map-link:active {
+      opacity: 0.6;
     }
 
     .modal-btn-row {
@@ -462,13 +481,11 @@
         <h3 class="modal-section-title">메뉴</h3>
         <div class="menu-list" id="modalMenuList"></div>
         <div class="modal-divider"></div>
-        <div class="location-row" id="modalLocationRow" onclick="openKakaoMap()">
-          <div class="location-left">
-            <span>📍</span>
-            <span>위치 보기</span>
-          </div>
-          <span style="color:var(--color-text-tertiary)">›</span>
+        <h3 class="modal-section-title">위치</h3>
+        <div class="modal-map-wrap">
+          <div id="modalMap" class="modal-map"></div>
         </div>
+        <div class="modal-map-link" onclick="openKakaoMap()">카카오맵에서 크게 보기 ›</div>
       </div>
       <div class="modal-btn-row">
         <button class="btn-secondary" id="modalSaveBtn" onclick="handleModalSave()">
@@ -484,7 +501,6 @@
   <!-- 토스트 -->
   <div class="toast" id="toast"></div>
 
-  <script src="./config.js"></script>
   <script type="module">
     import { getRestaurants, getMenusByRestaurant, addLike, removeLike, isLiked, addRecentView, getUserDoc } from "./firebase.js";
     import { onAuthChanged } from "./auth.js";
@@ -577,7 +593,7 @@
           <div class="restaurant-card" onclick="openModal('${r.id}')">
             <div class="card-img-wrap">
               ${r.photo
-                ? `<img class="card-img" src="./images/${r.photo}" alt="${r.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="card-img-placeholder" style="display:none">${getCategoryEmoji(r.category)}</div>`
+                ? `<img class="card-img" src="./images/${r.photo}" alt="${r.name}" onerror="onImgError(this,'${r.photo}','card')" /><div class="card-img-placeholder" style="display:none">${getCategoryEmoji(r.category)}</div>`
                 : `<div class="card-img-placeholder">${getCategoryEmoji(r.category)}</div>`
               }
               ${!isOpen ? '<span class="card-closed-badge">영업종료</span>' : ''}
@@ -649,7 +665,13 @@
         const img = document.createElement("img");
         img.src = `./images/${restaurant.photo}`;
         img.style.cssText = "width:100%;height:100%;object-fit:cover;position:absolute;inset:0";
-        img.onerror = () => { img.remove(); placeholder.style.display = "flex"; };
+        let heroAttempt = 0;
+        img.onerror = () => {
+          heroAttempt++;
+          if (heroAttempt === 1) { img.src = `./images/${restaurant.photo}.jpg`; return; }
+          if (heroAttempt === 2) { img.src = `./images/${restaurant.photo}.png`; return; }
+          img.remove(); placeholder.style.display = "flex";
+        };
         placeholder.style.display = "none";
         // 기존 img 제거 후 추가
         hero.querySelectorAll("img").forEach(i => i.remove());
@@ -689,14 +711,16 @@
         : "";
 
       // 메뉴
+      console.log("[DEBUG] getMenusByRestaurant 호출 ID:", restaurantId, typeof restaurantId);
       const menus = await getMenusByRestaurant(restaurantId);
+      console.log("[DEBUG] menus 결과:", menus.length, menus);
       const menuList = document.getElementById("modalMenuList");
       if (menus.length > 0) {
         menuList.innerHTML = menus.map(m => `
           <div class="menu-item">
             <div class="menu-item-left">
               ${m.photo
-                ? `<img class="menu-photo" src="./images/${m.photo}" alt="${m.name}" onerror="this.outerHTML='<div class=menu-photo-placeholder>🍽️</div>'" />`
+                ? `<img class="menu-photo" src="./images/${m.photo}" alt="${m.name}" onerror="onImgError(this,'${m.photo}','menu')" />`
                 : `<div class="menu-photo-placeholder">🍽️</div>`
               }
               <span class="menu-name">${m.name}</span>
@@ -713,6 +737,9 @@
       // 모달 오픈
       document.getElementById("modalOverlay").classList.add("open");
       document.body.style.overflow = "hidden";
+
+      // 카카오맵 초기화 (모달 전환 애니메이션 완료 후 렌더링)
+      setTimeout(() => initModalMap(restaurant), 400);
     };
 
     function updateModalSaveBtn() {
@@ -775,6 +802,72 @@
         return nowMin >= startMin || nowMin < endMin; // 자정 넘기는 경우
       } catch { return true; }
     }
+
+    function initModalMap(restaurant) {
+      const mapEl = document.getElementById("modalMap");
+      if (!mapEl) return;
+
+      function drawMap() {
+        mapEl.innerHTML = "";
+        const hasCoord = restaurant.lat && restaurant.lng;
+        const center = new kakao.maps.LatLng(
+          hasCoord ? restaurant.lat : CONFIG.HANSUNG_LAT,
+          hasCoord ? restaurant.lng : CONFIG.HANSUNG_LNG
+        );
+        const map = new kakao.maps.Map(mapEl, { center, level: 4 });
+
+        // 한성대 마커
+        const hansungPos = new kakao.maps.LatLng(CONFIG.HANSUNG_LAT, CONFIG.HANSUNG_LNG);
+        const hansungMarker = new kakao.maps.Marker({ map, position: hansungPos });
+        new kakao.maps.InfoWindow({
+          content: '<div style="display:inline-block;padding:2px 5px;font-size:11px;white-space:nowrap;line-height:1.4">한성대</div>',
+        }).open(map, hansungMarker);
+
+        // 식당 마커
+        if (hasCoord) {
+          const restPos = new kakao.maps.LatLng(restaurant.lat, restaurant.lng);
+          const restMarker = new kakao.maps.Marker({ map, position: restPos });
+          new kakao.maps.InfoWindow({
+            content: `<div style="display:inline-block;padding:2px 5px;font-size:11px;white-space:nowrap;line-height:1.4">${restaurant.name}</div>`,
+          }).open(map, restMarker);
+
+          const bounds = new kakao.maps.LatLngBounds();
+          bounds.extend(hansungPos);
+          bounds.extend(restPos);
+          map.setBounds(bounds, 60);
+        }
+      }
+
+      if (window.kakao && window.kakao.maps) {
+        kakao.maps.load(drawMap);
+      } else {
+        // SDK 로드 완료까지 최대 3초 대기
+        let retries = 0;
+        const wait = setInterval(() => {
+          if (window.kakao && window.kakao.maps) {
+            clearInterval(wait);
+            kakao.maps.load(drawMap);
+          } else if (++retries > 10) {
+            clearInterval(wait);
+          }
+        }, 300);
+      }
+    }
+
+    window.onImgError = function(img, photo, type) {
+      img._attempt = (img._attempt || 0) + 1;
+      const padded = /^\d{3}$/.test(photo) ? "0" + photo : photo;
+      if (img._attempt === 1) { img.src = `./images/${photo}.jpg`; return; }
+      if (img._attempt === 2) { img.src = `./images/${padded}.jpg`; return; }
+      if (img._attempt === 3) { img.src = `./images/${photo}.png`; return; }
+      if (img._attempt === 4) { img.src = `./images/${padded}.png`; return; }
+      if (type === 'card') {
+        img.style.display = 'none';
+        img.nextElementSibling.style.display = 'flex';
+      } else {
+        img.outerHTML = '<div class="menu-photo-placeholder">🍽️</div>';
+      }
+    };
 
     function getCategoryEmoji(category) {
       const map = { 한식: "🍚", 중식: "🥢", 일식: "🍣", 양식: "🍝", 분식: "🌮", 패스트푸드: "🍔", 아시아: "🍜", 카페: "☕", 기타: "🍽️" };
