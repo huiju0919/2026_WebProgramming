@@ -50,6 +50,12 @@ export async function getMenusByRestaurant(restaurantId) {
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
+// 전체 메뉴 목록 불러오기
+export async function getAllMenus() {
+  const snapshot = await getDocs(collection(db, "menus"));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
 // ─────────────────────────────────────────
 // 사용자 데이터
 // ─────────────────────────────────────────
