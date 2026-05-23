@@ -4,15 +4,15 @@
 
 const CONFIG = {
   FIREBASE: {
-    apiKey: "AIzaSyDanFHGHYueyZGKdz5he_OBUGBA12LtTak",
-    authDomain: "food-first-gm.firebaseapp.com",
-    projectId: "food-first-gm",
-    storageBucket: "food-first-gm.firebasestorage.app",
-    messagingSenderId: "401494731165",
-    appId: "1:401494731165:web:ac65290b6de35bf020e774",
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: "",
   },
   GROQ_API_KEY: "", //Groq, Gemini 뭐든 상관 없음
-  KAKAO_MAP_KEY: "5727448fe70c2c1f8db2139532a34354",
+  KAKAO_MAP_KEY: "",
   HANSUNG_LAT: 37.5826,
   HANSUNG_LNG: 127.0108,
   SWIPE: {
