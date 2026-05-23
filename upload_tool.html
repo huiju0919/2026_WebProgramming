@@ -63,6 +63,15 @@
     <div style="margin-top:12px;font-size:13px;color:#555">
       연결 상태: <span id="firebaseStatus" style="font-weight:600;color:#aaa">확인 중...</span>
     </div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" id="loginBtn" onclick="loginWithGoogle()" style="width:auto;display:none">
+        🔑 Google로 로그인
+      </button>
+      <button class="btn btn-sm" id="logoutBtn" onclick="logoutUser()" style="display:none;background:#f5f5f5;color:#555">
+        로그아웃
+      </button>
+      <span id="userInfo" style="font-size:13px;font-weight:600;color:#E24B4A">로그인이 필요합니다</span>
+    </div>
   </div>
 
   <!-- STEP 2: 식당 데이터 -->
@@ -198,19 +207,53 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, doc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getStorage, ref as storageRef, uploadBytes } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+  import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   // Firebase 초기화
-  let db, storage;
+  let db, storage, auth;
   try {
     const app = initializeApp(CONFIG.FIREBASE);
-    db = getFirestore(app);
+    db      = getFirestore(app);
     storage = getStorage(app);
+    auth    = getAuth(app);
     document.getElementById("firebaseStatus").textContent = "✅ 연결됨";
     document.getElementById("firebaseStatus").style.color = "#4CAF50";
   } catch (e) {
     document.getElementById("firebaseStatus").textContent = "❌ 연결 실패 — config.js 확인 필요";
     document.getElementById("firebaseStatus").style.color = "#E24B4A";
   }
+
+  // ── 로그인 상태 감지 ──
+  onAuthStateChanged(auth, user => {
+    const loginBtn  = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userInfo  = document.getElementById("userInfo");
+    if (user) {
+      loginBtn.style.display  = "none";
+      logoutBtn.style.display = "inline-block";
+      userInfo.textContent    = `${user.displayName || user.email} 으로 로그인됨`;
+      userInfo.style.color    = "#4CAF50";
+    } else {
+      loginBtn.style.display  = "inline-block";
+      logoutBtn.style.display = "none";
+      userInfo.textContent    = "로그인이 필요합니다";
+      userInfo.style.color    = "#E24B4A";
+    }
+    // 업로드 버튼 활성화 조건 재확인
+    checkUploadReady();
+    const imgValid = imageFiles.filter(f => f.valid).length;
+    document.getElementById("imageUploadBtn").disabled = imgValid === 0 || !storage || !user;
+  });
+
+  window.loginWithGoogle = async function() {
+    const provider = new GoogleAuthProvider();
+    try { await signInWithPopup(auth, provider); }
+    catch (e) { alert("로그인 실패: " + e.message); }
+  };
+
+  window.logoutUser = async function() {
+    await signOut(auth);
+  };
 
   // ── 파싱된 데이터 ──
   let restaurantData = [];
@@ -375,8 +418,9 @@
   }
 
   function checkUploadReady() {
-    const ready = restaurantData.length > 0 || menuData.length > 0;
-    document.getElementById("uploadBtn").disabled = !ready || !db;
+    const user  = auth?.currentUser;
+    const ready = (restaurantData.length > 0 || menuData.length > 0) && !!db && !!user;
+    document.getElementById("uploadBtn").disabled = !ready;
   }
 
   // ── 이미지 파일 처리 ──
@@ -402,7 +446,7 @@
       const ext      = ".webp";
       const num      = parseInt(baseName, 10);
       const isWebp   = file.name.toLowerCase().endsWith(".webp");
-      const valid    = !isNaN(num) && String(num) === baseName.trim() && isWebp;
+      const valid    = !isNaN(num) && isWebp;
       const paddedName = valid ? String(num).padStart(4, "0") + ext : null;
       const storagePath = valid ? `images/${paddedName}` : null;
       return { file, originalName: file.name, paddedName, storagePath, valid };
@@ -433,6 +477,7 @@
   // ── 이미지 업로드 ──
   window.startImageUpload = async function() {
     if (!storage) { addImgLog("Firebase Storage 연결이 필요합니다", "error"); return; }
+    if (!auth?.currentUser) { addImgLog("로그인이 필요합니다", "error"); return; }
 
     const validFiles = imageFiles.filter(f => f.valid);
     if (validFiles.length === 0) { addImgLog("업로드할 유효한 파일이 없습니다", "warn"); return; }
