@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FOOD FIRST — 환경설정</title>
+  <script src="./config.js"></script>
+  <script src="./theme.js"></script>
+  <link rel="stylesheet" href="./common.css" />
+  <link rel="stylesheet" href="./theme.css" />
+  <style>
+    /* ── 설정 섹션 ── */
+    .settings-group {
+      background: var(--color-bg-card);
+      border-radius: var(--radius-lg);
+      margin-bottom: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+
+    .settings-group-title {
+      padding: 12px var(--spacing-md);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-text-tertiary);
+      text-transform: uppercase;
+      background: var(--color-bg-input);
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    /* ── 설정 항목 ── */
+    .settings-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--spacing-md);
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .settings-item:last-child { border-bottom: none; }
+
+    .settings-item-label {
+      flex: 1;
+    }
+
+    .settings-item-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+
+    .settings-item-desc {
+      font-size: 12px;
+      color: var(--color-text-tertiary);
+    }
+
+    /* ── 토글 스위치 ── */
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 28px;
+      background: #ccc;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.3s;
+      border: none;
+      padding: 0;
+    }
+
+    .toggle-switch.active {
+      background: var(--color-primary);
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: left 0.3s;
+    }
+
+    .toggle-switch.active::after {
+      left: 22px;
+    }
+
+    /* ── 버튼 ── */
+    .settings-buttons {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      padding: var(--spacing-md);
+    }
+
+    .btn-danger {
+      padding: var(--spacing-md) var(--spacing-lg);
+      background: #FFEBEE;
+      border: 1px solid #FFCDD2;
+      border-radius: var(--radius-lg);
+      color: var(--color-danger);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-main);
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn-danger:active {
+      background: #FFCDD2;
+    }
+
+    /* ── 계정 연동 ── */
+    .linked-account {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--spacing-md);
+      background: var(--color-bg-input);
+      border-radius: var(--radius-md);
+      margin-bottom: 10px;
+    }
+
+    .account-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .account-icon {
+      font-size: 20px;
+    }
+
+    .account-details {
+      flex: 1;
+    }
+
+    .account-email {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
+
+    .account-date {
+      font-size: 12px;
+      color: var(--color-text-tertiary);
+      margin-top: 2px;
+    }
+
+    .btn-unlink {
+      padding: 6px 12px;
+      background: #FFEBEE;
+      border: 1px solid #FFCDD2;
+      border-radius: var(--radius-md);
+      color: var(--color-danger);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-main);
+      transition: background 0.15s;
+    }
+
+    .btn-unlink:active {
+      background: #FFCDD2;
+    }
+
+    .btn-link-account {
+      width: 100%;
+      padding: var(--spacing-md);
+      background: var(--color-primary);
+      border: none;
+      border-radius: var(--radius-lg);
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-main);
+      transition: background 0.15s;
+    }
+
+    .btn-link-account:active {
+      background: var(--color-primary-dark);
+    }
+
+    .btn-back {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- 헤더 -->
+    <header class="header">
+      <button class="btn-back" onclick="history.back()">←</button>
+      <span style="font-size:16px;font-weight:600">환경설정</span>
+      <div style="width:40px"></div>
+    </header>
+
+    <!-- 메인 콘텐츠 -->
+    <div class="page-content" id="mainContent" style="padding:var(--spacing-md); padding-bottom:calc(var(--nav-height) + var(--spacing-md) + 16px)">
+      <div class="spinner-wrap" style="height:50vh">
+        <div class="spinner"></div>
+        <span>불러오는 중...</span>
+      </div>
+    </div>
+
+    <!-- 하단 내비게이션 -->
+    <nav class="bottom-nav">
+      <a href="./index.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        홈
+      </a>
+      <a href="./swipe.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+        스와이프
+      </a>
+      <a href="./mypage.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        마이
+      </a>
+    </nav>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { getUserSettings, updateUserSettings } from "./firebase.js";
+    import { onAuthChanged, deleteAccount, linkGoogleAccount, unlinkGoogleAccount } from "./auth.js";
+
+    let currentUser = null;
+    let currentSettings = {};
+
+    onAuthChanged(async (user) => {
+      currentUser = user;
+
+      if (!user) {
+        document.getElementById("mainContent").innerHTML = `
+          <div style="text-align:center; padding:60px 20px">
+            <div style="font-size:64px; margin-bottom:16px">🔐</div>
+            <div style="font-size:18px; font-weight:700; margin-bottom:8px">로그인이 필요해요</div>
+            <button class="btn-primary" onclick="location.href='./login.html'" style="margin-top:20px">
+              로그인하기
+            </button>
+          </div>`;
+        return;
+      }
+
+      currentSettings = await getUserSettings(user.uid);
+      renderSettings();
+    });
+
+    function renderSettings() {
+      const linkedProviders = currentUser.providerData.map(p => p.providerId);
+
+      document.getElementById("mainContent").innerHTML = `
+        <!-- 계정 연동 -->
+        <div class="settings-group">
+          <div class="settings-group-title">계정 연동</div>
+
+          <div style="padding:var(--spacing-md)">
+            <!-- 현재 계정 -->
+            <div class="linked-account">
+              <div class="account-info">
+                <div class="account-icon">👤</div>
+                <div class="account-details">
+                  <div class="account-email">${currentUser.email}</div>
+                  <div class="account-date">현재 로그인 중</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 추가 연동 계정들 -->
+            ${linkedProviders.length > 1
+              ? currentUser.providerData
+                  .filter(p => p.providerId === 'google.com' && p.email !== currentUser.email)
+                  .map(provider => `
+                    <div class="linked-account">
+                      <div class="account-info">
+                        <div class="account-icon">🔗</div>
+                        <div class="account-details">
+                          <div class="account-email">${provider.email}</div>
+                          <div class="account-date">연동된 계정</div>
+                        </div>
+                      </div>
+                      <button class="btn-unlink" onclick="unlinkAccount('${provider.email}')">해제</button>
+                    </div>
+                  `).join('')
+              : ''}
+
+            <button class="btn-link-account" onclick="linkNewAccount()" style="margin-top:10px">
+              + 계정 연동 추가
+            </button>
+          </div>
+        </div>
+
+        <!-- 알림 설정 -->
+        <div class="settings-group">
+          <div class="settings-group-title">알림</div>
+
+          <div class="settings-item">
+            <div class="settings-item-label">
+              <div class="settings-item-title">이메일 알림</div>
+              <div class="settings-item-desc">주간 맛집 추천 이메일</div>
+            </div>
+            <button class="toggle-switch ${currentSettings.emailNotification ? 'active' : ''}"
+                    id="toggleEmailNotification"
+                    onclick="toggleSetting('emailNotification')"></button>
+          </div>
+        </div>
+
+        <!-- 개인정보 설정 -->
+        <div class="settings-group">
+          <div class="settings-group-title">개인정보</div>
+
+          <div class="settings-item">
+            <div class="settings-item-label">
+              <div class="settings-item-title">프로필 공개</div>
+              <div class="settings-item-desc">다른 사용자가 내 프로필을 볼 수 있음</div>
+            </div>
+            <button class="toggle-switch ${!currentSettings.privateProfile ? 'active' : ''}"
+                    id="togglePrivate"
+                    onclick="toggleSetting('privateProfile', true)"></button>
+          </div>
+
+          <div class="settings-item">
+            <div class="settings-item-label">
+              <div class="settings-item-title">마케팅 정보 수신</div>
+              <div class="settings-item-desc">특별 할인 및 이벤트 정보</div>
+            </div>
+            <button class="toggle-switch ${currentSettings.marketingEmail ? 'active' : ''}"
+                    id="toggleMarketing"
+                    onclick="toggleSetting('marketingEmail')"></button>
+          </div>
+        </div>
+
+        <!-- 앱 정보 -->
+        <div class="settings-group">
+          <div class="settings-group-title">정보</div>
+
+          <div class="settings-item">
+            <div class="settings-item-label">
+              <div class="settings-item-title">앱 버전</div>
+            </div>
+            <span style="font-size:14px; color:var(--color-text-secondary)">1.0.0</span>
+          </div>
+
+          <div class="settings-item">
+            <div class="settings-item-label">
+              <div class="settings-item-title">마지막 업데이트</div>
+            </div>
+            <span style="font-size:14px; color:var(--color-text-secondary)">2026.5.16</span>
+          </div>
+        </div>
+
+        <!-- 계정 관리 -->
+        <div class="settings-buttons">
+          <button class="btn-danger" onclick="handleDeleteAccount()">
+            계정 삭제
+          </button>
+        </div>`;
+    }
+
+    window.linkNewAccount = async function() {
+      try {
+        await linkGoogleAccount();
+        showToast("✅ 계정이 연동되었습니다");
+        renderSettings();
+      } catch (error) {
+        console.error(error);
+        showToast("❌ 연동 실패: " + error.message);
+      }
+    };
+
+    window.unlinkAccount = async function(email) {
+      if (!confirm(`정말 ${email}의 연동을 해제하시겠어요?`)) return;
+      try {
+        await unlinkGoogleAccount();
+        showToast("✅ 계정 연동이 해제되었습니다");
+        renderSettings();
+      } catch (error) {
+        console.error(error);
+        showToast("❌ 해제 실패: " + error.message);
+      }
+    };
+
+    window.toggleSetting = async function(key, inverse = false) {
+      if (!currentUser) return;
+      const newValue = inverse ? !currentSettings[key] : !currentSettings[key];
+      currentSettings[key] = newValue;
+
+      const idMap = {
+        emailNotification: 'toggleEmailNotification',
+        privateProfile:    'togglePrivate',
+        marketingEmail:    'toggleMarketing',
+      };
+      const btn = document.getElementById(idMap[key]);
+      if (btn) {
+        btn.classList.toggle('active', key === 'privateProfile' ? !newValue : newValue);
+      }
+
+      await updateUserSettings(currentUser.uid, currentSettings);
+      showToast("✅ 설정이 저장되었습니다");
+    };
+
+    window.handleDeleteAccount = async function() {
+      if (!currentUser) return;
+      if (!confirm('⚠️ 정말 계정을 삭제하시겠어요?\n\n이 작업은 되돌릴 수 없습니다.\n모든 데이터가 삭제됩니다.')) return;
+      if (!confirm('한 번 더 확인합니다. 정말 삭제하시겠어요?')) return;
+
+      try {
+        await deleteAccount();
+        showToast("계정이 삭제되었습니다");
+        setTimeout(() => location.href = './login.html', 1500);
+      } catch (error) {
+        console.error(error);
+        showToast("❌ 계정 삭제 실패: " + error.message);
+      }
+    };
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+  </script>
+</body>
+</html>
