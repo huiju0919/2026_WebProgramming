@@ -120,9 +120,54 @@
     </div>
   </div>
 
-  <!-- STEP 4: 업로드 -->
+  <!-- STEP 4: 이미지 업로드 -->
   <div class="card">
-    <div class="card-title"><div class="step-num">4</div> Firestore에 업로드</div>
+    <div class="card-title"><div class="step-num">4</div> 메뉴 이미지 업로드 (Storage)</div>
+
+    <div class="warn-box" style="margin-bottom:12px">
+      📁 이미지 파일명은 숫자로 인식되며 <b>4자리 패딩(0001.webp)</b>으로 변환됩니다.<br/>
+      Storage의 <b>images/</b> 폴더에 업로드됩니다. 같은 이름이 있으면 덮어씌워집니다.
+    </div>
+
+    <div class="drop-zone" id="imageDropZone" onclick="document.getElementById('imageFiles').click()">
+      <input type="file" id="imageFiles" accept=".webp" multiple onchange="handleImageFiles(this)" />
+      <div class="drop-zone-icon">🖼️</div>
+      <div>클릭하거나 이미지 파일을 드래그하세요</div>
+      <div style="font-size:12px;margin-top:4px">여러 파일 동시 선택 가능 · webp 파일만 업로드됩니다</div>
+      <div class="file-selected" id="imageFileCount"></div>
+    </div>
+
+    <div id="imagePreview" style="display:none;margin-top:12px">
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-num" id="imgTotal">0</div><div class="stat-label">총 파일 수</div></div>
+        <div class="stat-box"><div class="stat-num" id="imgValid">0</div><div class="stat-label">유효 (숫자명)</div></div>
+        <div class="stat-box"><div class="stat-num" id="imgInvalid" style="color:#E24B4A">0</div><div class="stat-label">건너뜀</div></div>
+      </div>
+      <div class="preview-scroll" style="margin-top:12px">
+        <table class="preview-table">
+          <thead><tr><th>원본 파일명</th><th>→ 저장될 경로</th><th>크기</th><th>상태</th></tr></thead>
+          <tbody id="imageTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <button class="btn btn-primary" id="imageUploadBtn" onclick="startImageUpload()" disabled>
+        🖼️ Storage에 이미지 업로드
+      </button>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="imgProgressFill"></div></div>
+    <div class="progress-text" id="imgProgressText" style="display:none"></div>
+
+    <div class="log-wrap" id="imgLogWrap" style="display:none">
+      <div id="imgLogContent"></div>
+    </div>
+  </div>
+
+  <!-- STEP 5: 업로드 -->
+  <div class="card">
+    <div class="card-title"><div class="step-num">5</div> Firestore에 업로드</div>
 
     <div class="warn-box" style="margin-bottom:12px">
       ⚠️ 업로드하면 Firestore의 <b>restaurants</b>, <b>menus</b> 컬렉션에 데이터가 추가됩니다.<br/>
@@ -152,12 +197,14 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, doc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getStorage, ref as storageRef, uploadBytes } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
   // Firebase 초기화
-  let db;
+  let db, storage;
   try {
     const app = initializeApp(CONFIG.FIREBASE);
     db = getFirestore(app);
+    storage = getStorage(app);
     document.getElementById("firebaseStatus").textContent = "✅ 연결됨";
     document.getElementById("firebaseStatus").style.color = "#4CAF50";
   } catch (e) {
@@ -330,6 +377,102 @@
   function checkUploadReady() {
     const ready = restaurantData.length > 0 || menuData.length > 0;
     document.getElementById("uploadBtn").disabled = !ready || !db;
+  }
+
+  // ── 이미지 파일 처리 ──
+  let imageFiles = []; // { file, paddedName, storagePath, valid }
+
+  // 드래그 앤 드롭 — 이미지 존
+  const imageZone = document.getElementById("imageDropZone");
+  imageZone.addEventListener("dragover", e => { e.preventDefault(); imageZone.classList.add("drag-over"); });
+  imageZone.addEventListener("dragleave", () => imageZone.classList.remove("drag-over"));
+  imageZone.addEventListener("drop", e => {
+    e.preventDefault();
+    imageZone.classList.remove("drag-over");
+    processImageFiles(e.dataTransfer.files);
+  });
+
+  window.handleImageFiles = function(input) {
+    if (input.files.length > 0) processImageFiles(input.files);
+  };
+
+  function processImageFiles(files) {
+    imageFiles = Array.from(files).map(file => {
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      const ext      = ".webp";
+      const num      = parseInt(baseName, 10);
+      const isWebp   = file.name.toLowerCase().endsWith(".webp");
+      const valid    = !isNaN(num) && String(num) === baseName.trim() && isWebp;
+      const paddedName = valid ? String(num).padStart(4, "0") + ext : null;
+      const storagePath = valid ? `images/${paddedName}` : null;
+      return { file, originalName: file.name, paddedName, storagePath, valid };
+    });
+
+    const validCount   = imageFiles.filter(f => f.valid).length;
+    const invalidCount = imageFiles.length - validCount;
+
+    document.getElementById("imageFileCount").textContent = `✅ ${imageFiles.length}개 파일 선택됨`;
+    document.getElementById("imgTotal").textContent   = imageFiles.length;
+    document.getElementById("imgValid").textContent   = validCount;
+    document.getElementById("imgInvalid").textContent = invalidCount;
+    document.getElementById("imgInvalid").style.color = invalidCount > 0 ? "#E24B4A" : "#4CAF50";
+
+    const tbody = document.getElementById("imageTableBody");
+    tbody.innerHTML = imageFiles.map(f => `
+      <tr>
+        <td>${f.originalName}</td>
+        <td>${f.storagePath ? `<span style="color:#4CAF50;font-family:monospace">${f.storagePath}</span>` : '<span style="color:#aaa">건너뜀</span>'}</td>
+        <td style="color:#888">${(f.file.size / 1024).toFixed(0)} KB</td>
+        <td>${f.valid ? "✅" : '<span style="color:#E24B4A">⚠️ 숫자 아님</span>'}</td>
+      </tr>`).join("");
+
+    document.getElementById("imagePreview").style.display = "block";
+    document.getElementById("imageUploadBtn").disabled = validCount === 0 || !storage;
+  }
+
+  // ── 이미지 업로드 ──
+  window.startImageUpload = async function() {
+    if (!storage) { addImgLog("Firebase Storage 연결이 필요합니다", "error"); return; }
+
+    const validFiles = imageFiles.filter(f => f.valid);
+    if (validFiles.length === 0) { addImgLog("업로드할 유효한 파일이 없습니다", "warn"); return; }
+
+    document.getElementById("imgLogWrap").style.display = "block";
+    document.getElementById("imgProgressText").style.display = "block";
+    document.getElementById("imageUploadBtn").disabled = true;
+
+    let done = 0;
+    const total = validFiles.length;
+
+    addImgLog(`이미지 ${total}개 업로드 시작...`, "info");
+
+    for (const { file, paddedName, storagePath, originalName } of validFiles) {
+      try {
+        const fileRef = storageRef(storage, storagePath);
+        await uploadBytes(fileRef, file);
+        done++;
+        const pct = Math.round((done / total) * 100);
+        document.getElementById("imgProgressFill").style.width = pct + "%";
+        document.getElementById("imgProgressText").textContent = `${done} / ${total} 업로드 중...`;
+        addImgLog(`✅ ${originalName} → ${storagePath}`, "success");
+      } catch (err) {
+        addImgLog(`❌ ${originalName} 실패: ${err.message}`, "error");
+      }
+    }
+
+    document.getElementById("imgProgressText").textContent = `✅ 이미지 업로드 완료! (${done}/${total}개)`;
+    document.getElementById("imgProgressFill").style.background = "#4CAF50";
+    addImgLog(`🎉 완료! ${done}개 업로드됨` + (done < total ? `, ${total - done}개 실패` : ""), done < total ? "warn" : "success");
+    document.getElementById("imageUploadBtn").disabled = false;
+  };
+
+  function addImgLog(msg, type = "info") {
+    const log  = document.getElementById("imgLogContent");
+    const item = document.createElement("div");
+    item.className = `log-item log-${type}`;
+    item.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    log.appendChild(item);
+    log.parentElement.scrollTop = log.parentElement.scrollHeight;
   }
 
   // ── 업로드 ──
