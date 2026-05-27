@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FOOD FIRST — 로그인</title>
+  <script src="./config.js"></script>
+  <script src="./theme.js"></script>
   <link rel="stylesheet" href="./common.css" />
+  <link rel="stylesheet" href="./theme.css" />
   <style>
     body {
       display: flex;
@@ -14,6 +17,7 @@
       background: var(--color-bg);
     }
 
+    /* ── 로그인 레이아웃 ── */
     .login-wrap {
       width: 100%;
       max-width: 360px;
@@ -22,8 +26,37 @@
       flex-direction: column;
       align-items: center;
       gap: var(--spacing-lg);
+      animation: fadeInUp 0.4s ease;
     }
 
+    /* auth 상태 확정 전: 로그인 카드 숨김 (깜빡임 방지) */
+    .login-wrap[hidden] { display: none; }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── auth 확인 중 스피너 ── */
+    .auth-checking {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      color: var(--color-text-secondary);
+      font-size: 0.875rem;
+    }
+    .auth-checking.hidden { display: none; }
+    .auth-checking-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* ── 로고 ── */
     .login-logo {
       display: flex;
       flex-direction: column;
@@ -39,23 +72,24 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 36px;
+      font-size: 2.25rem;
     }
 
     .login-logo-name {
-      font-size: 24px;
+      font-size: 1.5rem;
       font-weight: 800;
       color: var(--color-primary);
       letter-spacing: -0.5px;
     }
 
     .login-subtitle {
-      font-size: 15px;
+      font-size: 0.9375rem;
       color: var(--color-text-secondary);
       text-align: center;
       line-height: 1.5;
     }
 
+    /* ── 카드 ── */
     .login-card {
       width: 100%;
       background: var(--color-bg-card);
@@ -67,6 +101,7 @@
       gap: var(--spacing-md);
     }
 
+    /* ── 구글 로그인 버튼 ── */
     .btn-google {
       width: 100%;
       padding: 14px;
@@ -77,21 +112,27 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      font-size: 15px;
+      font-size: 0.9375rem;
       font-weight: 600;
       color: var(--color-text-primary);
-      transition: background 0.15s, border-color 0.15s;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
       cursor: pointer;
       font-family: var(--font-main);
+      position: relative;
     }
 
-    .btn-google:hover {
+    .btn-google:hover:not(:disabled) {
       background: var(--color-bg);
       border-color: var(--color-primary);
     }
 
-    .btn-google:active {
+    .btn-google:active:not(:disabled) {
       transform: scale(0.98);
+    }
+
+    .btn-google:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
     }
 
     .btn-google img {
@@ -99,12 +140,28 @@
       height: 20px;
     }
 
+    /* ── 버튼 내부 로딩 스피너 ── */
+    .btn-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── 구분선 ── */
     .login-divider {
       display: flex;
       align-items: center;
       gap: 12px;
       color: var(--color-text-tertiary);
-      font-size: 13px;
+      font-size: 0.8125rem;
     }
 
     .login-divider::before,
@@ -115,36 +172,80 @@
       background: var(--color-border);
     }
 
+    /* ── 안내 문구 ── */
     .login-note {
-      font-size: 12px;
+      font-size: 0.75rem;
       color: var(--color-text-tertiary);
       text-align: center;
       line-height: 1.6;
     }
 
+    /* ── 에러 박스 ── */
     .login-error {
-      font-size: 13px;
+      font-size: 0.8125rem;
       color: var(--color-danger);
       text-align: center;
-      padding: 10px;
+      padding: 10px 12px;
       background: #FFEBEE;
       border-radius: var(--radius-md);
       display: none;
+      line-height: 1.5;
+      animation: shakeX 0.35s ease;
     }
 
     .login-error.show {
       display: block;
     }
 
-    /* 로딩 상태 */
-    .btn-google.loading {
-      opacity: 0.7;
-      pointer-events: none;
+    @keyframes shakeX {
+      0%, 100% { transform: translateX(0); }
+      20%       { transform: translateX(-6px); }
+      40%       { transform: translateX(6px); }
+      60%       { transform: translateX(-4px); }
+      80%       { transform: translateX(4px); }
+    }
+
+    /* ── 팝업 차단 안내 박스 ── */
+    .popup-guide {
+      font-size: 0.8125rem;
+      color: #5C4400;
+      background: #FFF8E1;
+      border: 1px solid #FFE082;
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      line-height: 1.7;
+      display: none;
+    }
+
+    .popup-guide.show {
+      display: block;
+    }
+
+    .popup-guide strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.8125rem;
+    }
+
+    .popup-guide ol {
+      padding-left: 18px;
+      margin: 0;
+    }
+
+    .popup-guide li {
+      margin-bottom: 2px;
     }
   </style>
 </head>
 <body>
-  <div class="login-wrap">
+  <!-- auth 상태 확인 중 스피너 (로그인 카드 깜빡임 방지) -->
+  <div class="auth-checking" id="authChecking">
+    <div class="auth-checking-spinner"></div>
+    <span>불러오는 중...</span>
+  </div>
+
+  <!-- 비로그인 확정 후 표시 -->
+  <div class="login-wrap" id="loginWrap" hidden>
 
     <div class="login-logo">
       <div class="login-logo-icon">🍴</div>
@@ -155,7 +256,18 @@
 
     <div class="login-card">
 
+      <!-- 에러 메시지 -->
       <div id="loginError" class="login-error"></div>
+
+      <!-- 팝업 차단 안내 -->
+      <div id="popupGuide" class="popup-guide">
+        <strong>⚠️ 팝업이 차단됐어요</strong>
+        <ol>
+          <li>주소창 오른쪽 팝업 차단 아이콘 클릭</li>
+          <li>이 사이트의 팝업 허용 선택</li>
+          <li>페이지 새로고침 후 다시 로그인</li>
+        </ol>
+      </div>
 
       <button id="btnGoogle" class="btn-google" onclick="handleGoogleLogin()">
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
@@ -174,41 +286,91 @@
       </p>
 
     </div>
-
   </div>
 
-  <!-- Firebase SDK -->
-  <script src="./config.js"></script>
   <script type="module">
     import { loginWithGoogle, onAuthChanged } from "./auth.js";
 
-    // 이미 로그인된 경우 피드로 이동
+    // auth 상태 확정 전 스피너 표시, 확정 후 로그인 카드 표시
     onAuthChanged((user) => {
-      if (user) window.location.href = "./index.html";
+      if (user) {
+        // 이미 로그인됨 → 게스트 모드 흔적 제거 후 피드로 이동
+        sessionStorage.removeItem("guestMode");
+        window.location.href = "./index.html";
+      } else {
+        // 비로그인 확정 → 스피너 숨기고 로그인 카드 표시
+        document.getElementById("authChecking").classList.add("hidden");
+        document.getElementById("loginWrap").hidden = false;
+      }
     });
 
-    // 구글 로그인
-    window.handleGoogleLogin = async function () {
-      const btn = document.getElementById("btnGoogle");
-      const errorEl = document.getElementById("loginError");
+    // ── Firebase 에러 코드 → 한국어 메시지 ──
+    function getKoreanErrorMessage(code) {
+      const messages = {
+        "auth/popup-closed-by-user":       "로그인 창을 닫았어요. 다시 시도해주세요.",
+        "auth/cancelled-popup-request":    "이미 로그인 창이 열려 있어요.",
+        "auth/popup-blocked":              null, // 팝업 차단 → 별도 안내 박스 표시
+        "auth/network-request-failed":     "네트워크 오류가 발생했어요. 인터넷 연결을 확인해주세요.",
+        "auth/too-many-requests":          "요청이 너무 많아요. 잠시 후 다시 시도해주세요.",
+        "auth/user-disabled":              "이 계정은 사용이 제한됐어요. 관리자에게 문의해주세요.",
+        "auth/account-exists-with-different-credential":
+                                           "이미 다른 방법으로 가입된 이메일이에요.",
+        "auth/internal-error":             "일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요.",
+      };
+      return messages[code] !== undefined
+        ? messages[code]
+        : "로그인에 실패했어요. 다시 시도해주세요.";
+    }
 
-      btn.classList.add("loading");
-      btn.textContent = "로그인 중...";
-      errorEl.classList.remove("show");
+    // ── 버튼 로딩 상태 제어 ──
+    function setLoading(loading) {
+      const btn = document.getElementById("btnGoogle");
+      if (loading) {
+        btn.disabled = true;
+        btn.innerHTML = `<div class="btn-spinner"></div> 로그인 중...`;
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = `<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" /> 구글로 로그인`;
+      }
+    }
+
+    function showError(msg) {
+      const el = document.getElementById("loginError");
+      el.textContent = msg;
+      el.classList.add("show");
+      // 에러가 이미 표시된 상태에서 다시 흔들리도록 애니메이션 재실행
+      el.style.animation = "none";
+      requestAnimationFrame(() => { el.style.animation = ""; });
+    }
+
+    function hideError() {
+      document.getElementById("loginError").classList.remove("show");
+      document.getElementById("popupGuide").classList.remove("show");
+    }
+
+    // ── 구글 로그인 ──
+    window.handleGoogleLogin = async function () {
+      hideError();
+      setLoading(true);
 
       try {
         await loginWithGoogle();
         window.location.href = "./index.html";
       } catch (err) {
         console.error(err);
-        errorEl.textContent = "로그인에 실패했습니다. 다시 시도해주세요.";
-        errorEl.classList.add("show");
-        btn.classList.remove("loading");
-        btn.innerHTML = `<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" /> 구글로 로그인`;
+        setLoading(false);
+
+        if (err.code === "auth/popup-blocked") {
+          // 팝업 차단 → 에러 텍스트 대신 단계별 안내 박스 표시
+          document.getElementById("popupGuide").classList.add("show");
+        } else {
+          const msg = getKoreanErrorMessage(err.code);
+          if (msg) showError(msg);
+        }
       }
     };
 
-    // 둘러보기 (비로그인 피드)
+    // ── 둘러보기 (비로그인 피드) ──
     window.handleGuestMode = function () {
       sessionStorage.setItem("guestMode", "true");
       window.location.href = "./index.html";

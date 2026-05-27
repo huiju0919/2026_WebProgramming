@@ -1,0 +1,45 @@
+/* ═══════════════════════════════════════════════
+   theme.css — 다크모드 + 폰트 크기 전역 적용
+   모든 HTML 파일의 common.css 다음 줄에 추가:
+   <link rel="stylesheet" href="./theme.css" />
+   <script src="./theme.js"></script>  ← <head> 최상단
+═══════════════════════════════════════════════ */
+
+/* ── 다크모드 ── */
+html[data-theme="dark"] {
+  --color-bg:             #111114;
+  --color-bg-card:        #1C1C1F;
+  --color-bg-input:       #2C2C2F;
+  --color-text-primary:   #F2F2F7;
+  --color-text-secondary: #A1A1AA;
+  --color-text-tertiary:  #6B6B70;
+  --color-border:         #2C2C2F;
+  --color-border-light:   #232326;
+  --shadow-card:          0 1px 4px rgba(0,0,0,0.4);
+  --shadow-modal:         0 8px 32px rgba(0,0,0,0.6);
+}
+
+html[data-theme="dark"] body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] img {
+  opacity: 0.92;
+}
+
+/* ── 폰트 크기 ── */
+/* :root(html)에 font-size를 설정 → rem 단위가 모두 따라 스케일링
+   박스/패딩/위젯 크기는 px 절대값이므로 영향 없음 (글자만 커지고 작아짐) */
+html[data-font-size="sm"] { font-size: 14px; }
+html[data-font-size="md"] { font-size: 16px; }
+html[data-font-size="lg"] { font-size: 18px; }
+html[data-font-size="xl"] { font-size: 20px; }
