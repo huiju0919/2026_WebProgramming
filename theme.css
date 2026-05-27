@@ -7,16 +7,22 @@
 
 /* ── 다크모드 ── */
 html[data-theme="dark"] {
-  --color-bg:             #111114;
-  --color-bg-card:        #1C1C1F;
-  --color-bg-input:       #2C2C2F;
-  --color-text-primary:   #F2F2F7;
-  --color-text-secondary: #A1A1AA;
-  --color-text-tertiary:  #6B6B70;
-  --color-border:         #2C2C2F;
-  --color-border-light:   #232326;
-  --shadow-card:          0 1px 4px rgba(0,0,0,0.4);
-  --shadow-modal:         0 8px 32px rgba(0,0,0,0.6);
+  --color-bg:             #15110D;
+  --color-bg-card:        #1F1A14;
+  --color-bg-input:       #2A231C;
+  --color-text-primary:   #FAF6F0;
+  --color-text-secondary: #B8AC9C;
+  --color-text-tertiary:  #7A6E5F;
+  --color-border:         #2E2620;
+  --color-border-light:   #251F1A;
+  --color-primary:        #FF8E68;
+  --color-primary-light:  #3A241B;
+  --color-primary-dark:   #FF6A3F;
+  --header-bg:            rgba(21, 17, 13, 0.78);
+  --shadow-card:          0 2px 12px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-card-hover:    0 22px 44px rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.35);
+  --shadow-modal:         0 30px 80px rgba(0,0,0,0.6), 0 12px 24px rgba(0,0,0,0.4);
+  --shadow-btn:           0 6px 20px rgba(255,142,104,0.35);
 }
 
 html[data-theme="dark"] body {

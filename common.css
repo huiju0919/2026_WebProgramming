@@ -6,37 +6,41 @@
 ───────────────────────────────────────── */
 :root {
   /* 주요 색상 */
-  --color-primary: #E57B5A;
-  --color-primary-light: #FAECE7;
-  --color-primary-dark: #C5623E;
+  --color-primary: #F47156;
+  --color-primary-light: #FFDED2;
+  --color-primary-dark: #CB553A;
 
   /* 배경 */
   --color-bg: #FAF9F7;
   --color-bg-card: #FFFFFF;
-  --color-bg-input: #F5F3F0;
+  --color-bg-input: #F1EEEA;
 
   /* 텍스트 */
-  --color-text-primary: #1A1A1A;
-  --color-text-secondary: #666666;
-  --color-text-tertiary: #AAAAAA;
+  --color-text-primary: #1A1612;
+  --color-text-secondary: #6B6359;
+  --color-text-tertiary: #9F968B;
   --color-text-white: #FFFFFF;
 
   /* 보더 */
-  --color-border: #EBEBEB;
-  --color-border-light: #F5F3F0;
+  --color-border: #ECE7E0;
+  --color-border-light: #F2EEE9;
 
   /* 상태 */
-  --color-success: #4CAF50;
-  --color-danger: #E24B4A;
+  --color-success: #2E7D32;
+  --color-danger: #C62828;
+
+  /* 상단 네비 배경 (반투명) */
+  --header-bg: rgba(250, 249, 247, 0.85);
 
   /* 태그 배경 */
   --color-tag-bg: #F5F3F0;
   --color-tag-text: #555555;
 
   /* 그림자 */
-  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08);
-  --shadow-modal: 0 8px 40px rgba(0, 0, 0, 0.16);
-  --shadow-btn: 0 4px 12px rgba(229, 123, 90, 0.35);
+  --shadow-card: 0 2px 12px rgba(64, 40, 20, 0.06), 0 1px 2px rgba(64, 40, 20, 0.04);
+  --shadow-card-hover: 0 18px 36px rgba(64, 40, 20, 0.12), 0 6px 14px rgba(64, 40, 20, 0.06);
+  --shadow-modal: 0 30px 80px rgba(64, 40, 20, 0.18), 0 12px 24px rgba(64, 40, 20, 0.1);
+  --shadow-btn: 0 6px 18px rgba(244, 113, 86, 0.32);
 
   /* 반경 */
   --radius-sm: 8px;
@@ -57,8 +61,8 @@
   /* 네비게이션 높이 */
   --nav-height: 64px;
 
-  /* 최대 너비 (모바일 앱 느낌) */
-  --max-width: 480px;
+  /* 최대 너비 (데스크톱 레이아웃) */
+  --max-width: 1440px;
 }
 
 /* ─────────────────────────────────────────

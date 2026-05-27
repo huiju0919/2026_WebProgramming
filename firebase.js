@@ -308,6 +308,19 @@ export function getStorageUrl(photoId) {
   return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/images%2F${id}.webp?alt=media`;
 }
 
+// 식당 대표 사진 결정
+// 식당 사진은 수집하지 않고 메뉴 사진만 있으므로,
+// 식당 자체 photo가 없으면 해당 식당의 첫 번째 메뉴 사진으로 폴백한다.
+export function getRestaurantPhoto(restaurant, menus = []) {
+  if (restaurant?.photo) return restaurant.photo;
+  const rid = String(restaurant?.id ?? "");
+  const own = menus
+    .filter(m => String(m.restaurantId) === rid)
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  const withPhoto = own.find(m => m.photo);
+  return withPhoto ? withPhoto.photo : null;
+}
+
 // 영업 상태 반환: "open" | "closed" | "break"
 export function getOpenStatus(restaurant) {
   if (!restaurant.hours) return "open";
