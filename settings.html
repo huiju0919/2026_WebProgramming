@@ -220,9 +220,12 @@
           <a href="./swipe.html" class="nav-link">스와이프</a>
           <a href="./mypage.html" class="nav-link">마이</a>
         </nav>
-        <div class="nav-right"><a href="./mypage.html" class="avatar" title="마이페이지">나</a></div>
+        <div class="nav-right"><a href="./mypage.html" class="avatar" title="마이페이지" id="navAvatar">나</a></div>
       </div>
     </header>
+
+    <!-- 네비 아바타: 캐시된 프로필 사진 즉시 적용 ("나" 깜빡임 방지) -->
+    <script src="./navavatar.js"></script>
 
     <!-- 메인 콘텐츠 -->
     <div class="page-content" id="mainContent" style="padding:var(--spacing-md); padding-bottom:var(--spacing-xl)">
@@ -251,7 +254,7 @@
   </script>
 
   <script type="module">
-    import { getUserSettings, updateUserSettings } from "./firebase.js";
+    import { getUserSettings, updateUserSettings, updateNavAvatar, getUserDoc } from "./firebase.js";
     import { onAuthChanged, deleteAccount, linkGoogleAccount, unlinkGoogleAccount } from "./auth.js";
 
     let currentUser = null;
@@ -261,6 +264,7 @@
       currentUser = user;
 
       if (!user) {
+        updateNavAvatar(null);
         document.getElementById("mainContent").innerHTML = `
           <div style="text-align:center; padding:60px 20px">
             <div style="font-size:64px; margin-bottom:16px">🔐</div>
@@ -272,6 +276,8 @@
         return;
       }
 
+      const userData = await getUserDoc(user.uid);
+      updateNavAvatar(user, userData);
       currentSettings = await getUserSettings(user.uid);
       renderSettings();
     });

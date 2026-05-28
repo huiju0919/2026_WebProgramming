@@ -34,7 +34,7 @@
 
     /* ── 취향 요약 카드 ── */
     .taste-card {
-      margin: var(--spacing-md);
+      margin: var(--spacing-md) 64px;
       padding: var(--spacing-lg);
       background: var(--color-primary);
       border-radius: var(--radius-xl);
@@ -65,7 +65,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 0 var(--spacing-md);
+      padding: 0 64px;
       margin-bottom: 12px;
     }
 
@@ -86,7 +86,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      padding: 0 var(--spacing-md);
+      padding: 0 64px;
       margin-bottom: var(--spacing-lg);
     }
 
@@ -154,7 +154,7 @@
 
     /* ── 지도 ── */
     .map-section {
-      padding: 0 var(--spacing-md);
+      padding: 0 64px;
       margin-bottom: var(--spacing-lg);
     }
 
@@ -168,8 +168,8 @@
 
     /* ── 다시 탐색 버튼 ── */
     .bottom-actions {
-      padding: var(--spacing-md);
-      padding-bottom: var(--spacing-xl);
+      padding: var(--spacing-md) 64px;
+      padding-bottom: 64px;
     }
 
     /* ── 로딩 ── */
@@ -178,18 +178,23 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 60px var(--spacing-md);
-      gap: 16px;
+      min-height: 60vh;
+      gap: var(--spacing-md);
       text-align: center;
+      padding: var(--spacing-xl);
+    }
+
+    .ai-loading-icon {
+      font-size: 72px;
     }
 
     .ai-loading-title {
-      font-size: 1.125rem;
-      font-weight: 600;
+      font-size: 22px;
+      font-weight: 700;
     }
 
     .ai-loading-sub {
-      font-size: 0.875rem;
+      font-size: 15px;
       color: var(--color-text-secondary);
       line-height: 1.6;
     }
@@ -225,16 +230,20 @@
           <a href="./swipe.html" class="nav-link">스와이프</a>
           <a href="./mypage.html" class="nav-link">마이</a>
         </nav>
-        <div class="nav-right"><a href="./mypage.html" class="avatar" title="마이페이지">나</a></div>
+        <div class="nav-right"><a href="./mypage.html" class="avatar" title="마이페이지" id="navAvatar">나</a></div>
       </div>
     </header>
+
+    <!-- 네비 아바타: 캐시된 프로필 사진 즉시 적용 ("나" 깜빡임 방지) -->
+    <script src="./navavatar.js"></script>
 
     <!-- 메인 콘텐츠 -->
     <div class="page-content" id="mainContent">
       <div class="ai-loading" id="aiLoading">
-        <div class="spinner" style="width:48px;height:48px;border-width:4px"></div>
-        <div class="ai-loading-title">취향을 분석하고 있어요</div>
-        <div class="ai-loading-sub" id="loadingMsg">스와이프 데이터를<br/>AI가 분석 중이에요 🤔</div>
+        <div class="ai-loading-icon">🎯</div>
+        <div class="ai-loading-title">취향 분석 완료!</div>
+        <div class="ai-loading-sub">AI가 최적의 맛집을<br/>찾고 있어요</div>
+        <div class="spinner"></div>
       </div>
     </div>
 
@@ -305,6 +314,7 @@
       addLike, removeLike, getUserDoc,
       addRegular, removeRegular,
       getStorageUrl, getRestaurantPhoto, getOpenStatus, formatDistance, loadRestaurantData,
+      updateNavAvatar,
     } from "./firebase.js";
     import { onAuthChanged } from "./auth.js";
 
@@ -325,6 +335,9 @@
         const userData = await getUserDoc(user.uid);
         userLikes    = userData.likes    || [];
         userRegulars = userData.regulars || [];
+        updateNavAvatar(user, userData);
+      } else {
+        updateNavAvatar(null);
       }
     });
 
@@ -550,7 +563,6 @@ ${candidateLines}
                   ${r.tags ? r.tags.split(",").slice(0,3).map(t => `<span class="tag">${t.trim()}</span>`).join("") : ""}
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
-                  <div class="rating"><span class="rating-star">★</span>${r.rating || '-'}</div>
                   <span style="font-size:0.75rem;color:var(--color-text-tertiary)">${['₩','₩₩','₩₩₩'][r.price_range-1] || ''}</span>
                 </div>
               </div>
@@ -600,7 +612,7 @@ ${candidateLines}
           <circle cx="16" cy="15" r="5.5" fill="#fff"/>
         </svg>`;
         const url = "data:image/svg+xml;utf8," + encodeURIComponent(svg);
-        return new kakao.maps.MarkerImage(url, new kakao.maps.Size(32, 42), { offset: new kakao.maps.Point(16, 42) });
+        return new kakao.maps.MarkerImage(url, new kakao.maps.Size(28, 37), { offset: new kakao.maps.Point(14, 37) });
       };
 
       const center     = new kakao.maps.LatLng(CONFIG.HANSUNG_LAT, CONFIG.HANSUNG_LNG);
@@ -608,24 +620,16 @@ ${candidateLines}
 
       // 한성대 마커 (회색)
       const hansungPos = new kakao.maps.LatLng(CONFIG.HANSUNG_LAT, CONFIG.HANSUNG_LNG);
-      const hansungMkr = new kakao.maps.Marker({ map: mapInstance, position: hansungPos, image: makeMarkerImage("#9CA3AF") });
-      new kakao.maps.InfoWindow({
-        content: '<div style="display:inline-block;padding:2px 5px;font-size:0.6875rem;white-space:nowrap">한성대</div>',
-      }).open(mapInstance, hansungMkr);
+      new kakao.maps.Marker({ map: mapInstance, position: hansungPos, image: makeMarkerImage("#9CA3AF") });
 
       const bounds = new kakao.maps.LatLngBounds();
       bounds.extend(hansungPos);
 
-      // 추천 식당 마커 (파란색 + 번호)
-      recommendedRestaurants.forEach((r, i) => {
+      // 추천 식당 마커 (파란색)
+      recommendedRestaurants.forEach((r) => {
         if (!r.lat || !r.lng) return;
         const pos = new kakao.maps.LatLng(r.lat, r.lng);
-        const mkr = new kakao.maps.Marker({ map: mapInstance, position: pos, image: makeMarkerImage("#2563EB") });
-        const iw  = new kakao.maps.InfoWindow({
-          content: `<div style="display:inline-block;padding:2px 5px;font-size:0.6875rem;white-space:nowrap">${i+1}. ${r.name}</div>`,
-        });
-        iw.open(mapInstance, mkr);
-        kakao.maps.event.addListener(mkr, "click", () => iw.open(mapInstance, mkr));
+        new kakao.maps.Marker({ map: mapInstance, position: pos, image: makeMarkerImage("#2563EB") });
         bounds.extend(pos);
       });
 
@@ -809,19 +813,13 @@ ${candidateLines}
         const makeMarkerImage = (fill) => {
           const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42"><path d="M16 0C7.2 0 0 7 0 15.6c0 10.5 14.4 25 15 25.6.6.5 1.4.5 2 0 .6-.6 15-15.1 15-25.6C32 7 24.8 0 16 0z" fill="${fill}"/><circle cx="16" cy="15" r="5.5" fill="#fff"/></svg>`;
           const url = "data:image/svg+xml;utf8," + encodeURIComponent(svg);
-          return new kakao.maps.MarkerImage(url, new kakao.maps.Size(32, 42), { offset: new kakao.maps.Point(16, 42) });
+          return new kakao.maps.MarkerImage(url, new kakao.maps.Size(28, 37), { offset: new kakao.maps.Point(14, 37) });
         };
-        const hansungPos    = new kakao.maps.LatLng(CONFIG.HANSUNG_LAT, CONFIG.HANSUNG_LNG);
-        const hansungMarker = new kakao.maps.Marker({ map, position: hansungPos, image: makeMarkerImage("#9CA3AF") });
-        new kakao.maps.InfoWindow({
-          content: '<div style="display:inline-block;padding:2px 5px;font-size:0.6875rem;white-space:nowrap;line-height:1.4">한성대</div>',
-        }).open(map, hansungMarker);
+        const hansungPos = new kakao.maps.LatLng(CONFIG.HANSUNG_LAT, CONFIG.HANSUNG_LNG);
+        new kakao.maps.Marker({ map, position: hansungPos, image: makeMarkerImage("#9CA3AF") });
         if (hasCoord) {
-          const restPos    = new kakao.maps.LatLng(restaurant.lat, restaurant.lng);
-          const restMarker = new kakao.maps.Marker({ map, position: restPos, image: makeMarkerImage("#2563EB") });
-          new kakao.maps.InfoWindow({
-            content: `<div style="display:inline-block;padding:2px 5px;font-size:0.6875rem;white-space:nowrap;line-height:1.4">${restaurant.name}</div>`,
-          }).open(map, restMarker);
+          const restPos = new kakao.maps.LatLng(restaurant.lat, restaurant.lng);
+          new kakao.maps.Marker({ map, position: restPos, image: makeMarkerImage("#2563EB") });
           const bounds = new kakao.maps.LatLngBounds();
           bounds.extend(hansungPos);
           bounds.extend(restPos);

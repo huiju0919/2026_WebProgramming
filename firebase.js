@@ -321,6 +321,34 @@ export function getRestaurantPhoto(restaurant, menus = []) {
   return withPhoto ? withPhoto.photo : null;
 }
 
+// 상단 네비 아바타(#navAvatar)에 프로필 사진 표시
+// 우선순위: 커스텀 사진(photoBase64) → 구글 사진(photoURL) → 이름 이니셜
+export function updateNavAvatar(user, userData) {
+  const el = document.getElementById("navAvatar");
+  // 비로그인: 캐시 제거 후 "나"
+  if (!user) {
+    try { localStorage.removeItem("ff_navAvatar"); } catch (e) {}
+    if (el) el.textContent = "나";
+    return;
+  }
+  const initial = (String((userData && userData.displayName) || user.displayName || user.email || "나").trim().charAt(0) || "나").toUpperCase();
+  const photo = (userData && userData.photoBase64) || user.photoURL || "";
+  // 다음 페이지 로드 때 즉시 적용할 수 있도록 캐시 저장
+  try { localStorage.setItem("ff_navAvatar", photo ? photo : "text:" + initial); } catch (e) {}
+  if (!el) return;
+  if (photo) {
+    el.textContent = "";
+    const img = document.createElement("img");
+    img.src = photo;
+    img.alt = "프로필";
+    img.style.cssText = "width:100%;height:100%;object-fit:cover;border-radius:50%;display:block";
+    img.onerror = () => { el.textContent = initial; };
+    el.appendChild(img);
+  } else {
+    el.textContent = initial;
+  }
+}
+
 // 영업 상태 반환: "open" | "closed" | "break"
 export function getOpenStatus(restaurant) {
   if (!restaurant.hours) return "open";

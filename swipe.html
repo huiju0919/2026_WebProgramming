@@ -393,9 +393,12 @@
           <a href="./swipe.html" class="nav-link is-active">스와이프</a>
           <a href="./mypage.html" class="nav-link">마이</a>
         </nav>
-        <div class="nav-right"><a href="./mypage.html" class="avatar" title="마이페이지">나</a></div>
+        <div class="nav-right"><a href="./mypage.html" class="avatar" title="마이페이지" id="navAvatar">나</a></div>
       </div>
     </header>
+
+    <!-- 네비 아바타: 캐시된 프로필 사진 즉시 적용 ("나" 깜빡임 방지) -->
+    <script src="./navavatar.js"></script>
 
     <!-- 진행 바 -->
     <div class="progress-wrap">
@@ -488,7 +491,7 @@
     import {
       incrementSwipeCount, getTasteProfile, saveTasteProfile,
       getBlockedMenus, blockMenu,
-      getStorageUrl, loadRestaurantData,
+      getStorageUrl, loadRestaurantData, updateNavAvatar, getUserDoc,
     } from "./firebase.js";
     import { onAuthChanged } from "./auth.js";
     // ── 상수 ──
@@ -562,6 +565,11 @@
     // onAuthChanged가 currentUser를 세팅한 뒤 init 실행 (타이밍 보장)
     onAuthChanged((user) => {
       currentUser = user;
+      if (user) {
+        getUserDoc(user.uid).then(d => updateNavAvatar(user, d)).catch(() => updateNavAvatar(user));
+      } else {
+        updateNavAvatar(null);
+      }
       // 최초 1회만 init 실행
       if (!window._swipeInitDone) {
         window._swipeInitDone = true;
@@ -1551,14 +1559,7 @@
       sessionStorage.setItem("swipeResult", JSON.stringify(swipeResult));
       sessionStorage.removeItem("swipeProgress"); // 완료된 세션은 즉시 제거
 
-      document.getElementById("cardDeck").style.display = "none";
-      const swipeBtns = document.getElementById("swipeButtons");
-      if (swipeBtns) swipeBtns.style.display = "none";
-      document.getElementById("completeScreen").classList.add("show");
-
-      setTimeout(() => {
-        window.location.href = "./result.html";
-      }, 1500);
+      window.location.href = "./result.html";
     }
 
     // ── 다시 보지 않기 ──
