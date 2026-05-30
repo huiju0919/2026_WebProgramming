@@ -240,9 +240,9 @@
     <!-- 메인 콘텐츠 -->
     <div class="page-content" id="mainContent">
       <div class="ai-loading" id="aiLoading">
-        <div class="ai-loading-icon">🎯</div>
+        <div class="ai-loading-icon" data-icon="target"></div>
         <div class="ai-loading-title">취향 분석 완료!</div>
-        <div class="ai-loading-sub">AI가 최적의 맛집을<br/>찾고 있어요</div>
+        <div class="ai-loading-sub">취향에 맞는 맛집을<br/>고르고 있어요</div>
         <div class="spinner"></div>
       </div>
     </div>
@@ -255,7 +255,7 @@
       <div class="modal-hero" id="modalHero">
         <span id="modalHeroEmoji">🍽️</span>
         <img id="modalHeroImg" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0" />
-        <button class="modal-close" onclick="closeModal()">✕</button>
+        <button class="modal-close" onclick="closeModal()"><span class="ic" data-icon="close"></span></button>
       </div>
       <div class="modal-scroll-body">
         <div class="modal-body">
@@ -280,14 +280,14 @@
       <!-- 저장 / 단골 / 길찾기 -->
       <div class="modal-btn-row">
         <button class="modal-icon-btn" id="modalSaveBtn" onclick="handleSave()">
-          <span class="icon" id="modalSaveIcon">🤍</span>
+          <span class="icon" id="modalSaveIcon" data-icon="heart"></span>
           <span class="label">저장</span>
         </button>
         <button class="modal-icon-btn" id="modalRegularBtn" onclick="handleModalRegular()">
-          <span class="icon">🏆</span>
+          <span class="icon" id="modalRegularIcon" data-icon="bookmark"></span>
           <span class="label" id="modalRegularLabel">단골</span>
         </button>
-        <button class="btn-primary" onclick="openNav()">길 찾기 ✈</button>
+        <button class="btn-primary" onclick="openNav()">길찾기<span class="ic" data-icon="navigation"></span></button>
       </div>
     </div>
   </div>
@@ -317,6 +317,8 @@
       updateNavAvatar,
     } from "./firebase.js";
     import { onAuthChanged } from "./auth.js";
+    import { ICONS, applyIcons } from "./icons.js";
+    applyIcons();
 
     // ── 상태 ──
     let recommendedRestaurants = [];
@@ -358,10 +360,10 @@
 
     // 로딩 메시지 순환
     const loadingMsgs = [
-      "스와이프 데이터를<br/>AI가 분석 중이에요 🤔",
-      "좋아요·싫어요 패턴을<br/>파악하고 있어요 🔍",
+      "스와이프 데이터를<br/>분석하고 있어요",
+      "좋아요·싫어요 패턴을<br/>파악하고 있어요",
       "취향에 딱 맞는 맛집을<br/>고르고 있어요 🍽️",
-      "거의 다 됐어요!<br/>조금만 기다려주세요 ✨",
+      "거의 다 됐어요!<br/>조금만 기다려주세요",
     ];
     let msgIdx = 0;
     const msgTimer = setInterval(() => {
@@ -579,7 +581,7 @@ ${candidateLines}
           ${summary ? `<div class="taste-subtitle">${summary}</div>` : ""}
         </div>` : summary ? `
         <div style="margin:var(--spacing-md);padding:14px 16px;background:var(--color-primary-light);border-radius:var(--radius-lg);font-size:0.875rem;color:var(--color-primary-dark);line-height:1.6;font-weight:500">
-          ✨ ${summary}
+          ${summary}
         </div>` : ""}
 
         <div class="section-title-row" style="margin-top:${keywords || summary ? '4px' : 'var(--spacing-md)'}">
@@ -678,18 +680,18 @@ ${candidateLines}
         ? formatDistance(CONFIG.HANSUNG_LAT, CONFIG.HANSUNG_LNG, restaurant.lat, restaurant.lng)
         : "-";
       const metaRows = [
-        { icon: "🏷️", label: "카테고리", value: restaurant.category || "-" },
-        { icon: "📍", label: "거리",    value: distanceValue },
-        { icon: "🕐", label: "영업시간", value: restaurant.hours || "-" },
+        { icon: ICONS.tag,    label: "카테고리", value: restaurant.category || "-" },
+        { icon: ICONS.mapPin, label: "거리",    value: distanceValue },
+        { icon: ICONS.clock,  label: "영업시간", value: restaurant.hours || "-" },
       ];
       if (restaurant.break_time && restaurant.break_time !== "없음")
-        metaRows.push({ icon: "☕", label: "브레이크", value: restaurant.break_time });
+        metaRows.push({ icon: ICONS.coffee, label: "브레이크", value: restaurant.break_time });
       if (restaurant.closed_day && restaurant.closed_day !== "없음")
-        metaRows.push({ icon: "📅", label: "정기휴무", value: restaurant.closed_day });
+        metaRows.push({ icon: ICONS.calendarX, label: "정기휴무", value: restaurant.closed_day });
 
       document.getElementById("modalMeta").innerHTML = metaRows.map(r => `
         <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--color-border-light)">
-          <span style="font-size:0.9375rem;width:20px;text-align:center">${r.icon}</span>
+          <span style="font-size:0.9375rem;width:20px;text-align:center;color:var(--color-text-tertiary)">${r.icon}</span>
           <span style="font-size:0.75rem;color:var(--color-text-tertiary);width:52px;flex-shrink:0">${r.label}</span>
           <span style="font-size:0.8125rem;color:var(--color-text-primary);font-weight:500">${r.value}</span>
         </div>`).join("");
@@ -732,7 +734,7 @@ ${candidateLines}
     function updateModalSaveBtn() {
       if (!currentRestaurant) return;
       const liked = userLikes.includes(currentRestaurant.id);
-      document.getElementById("modalSaveIcon").textContent = liked ? "❤️" : "🤍";
+      document.getElementById("modalSaveIcon").innerHTML = liked ? ICONS.heartFill : ICONS.heart;
       document.getElementById("modalSaveBtn").classList.toggle("active", liked);
     }
 
@@ -740,6 +742,7 @@ ${candidateLines}
       if (!currentRestaurant) return;
       const isReg = userRegulars.includes(currentRestaurant.id);
       document.getElementById("modalRegularBtn").classList.toggle("active", isReg);
+      document.getElementById("modalRegularIcon").innerHTML = isReg ? ICONS.bookmarkFill : ICONS.bookmark;
       document.getElementById("modalRegularLabel").textContent = isReg ? "단골 ✓" : "단골";
     }
 
@@ -781,7 +784,7 @@ ${candidateLines}
       } else {
         userRegulars.push(currentRestaurant.id);
         await addRegular(currentUser.uid, currentRestaurant.id);
-        showToast("단골 등록! 🏆");
+        showToast("단골 등록");
       }
       updateModalRegularBtn();
     };
@@ -851,7 +854,7 @@ ${candidateLines}
       clearInterval(msgTimer);
       document.getElementById("mainContent").innerHTML = `
         <div class="error-state">
-          <div style="font-size:3rem">😢</div>
+          <div style="font-size:3rem;color:var(--color-text-tertiary)">${ICONS.frown}</div>
           <div style="font-size:1rem;font-weight:600">${msg}</div>
           <button class="btn-primary" onclick="location.href='./swipe.html'" style="max-width:200px">다시 스와이프하기</button>
         </div>`;

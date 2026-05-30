@@ -35,7 +35,7 @@
       max-width: var(--max-width); margin: 0 auto; padding: 0 32px;
     }
     .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -0.5px; font-size: 19px; color: var(--color-primary); }
-    .brand-mark { width: 32px; height: 32px; border-radius: 10px; background: var(--color-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; box-shadow: 0 4px 12px rgba(244,113,86,0.35); }
+    .brand-mark { width: 32px; height: 32px; border-radius: 10px; background: var(--color-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; box-shadow: 0 4px 12px rgba(244,80,46,0.35); }
     .nav-links { display: flex; gap: 4px; }
     .nav-link { padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--color-text-secondary); transition: background .15s, color .15s; white-space: nowrap; }
     .nav-link:hover { background: var(--color-bg-input); color: var(--color-text-primary); }
@@ -99,7 +99,7 @@
     html[data-theme="dark"] .theme-fab .moon { display: block; }
 
     /* ── 맨 위로 버튼 ── */
-    .scroll-top-btn { position: fixed; bottom: 84px; right: 24px; width: 44px; height: 44px; border-radius: 50%; background: var(--color-primary); color: #fff; font-size: 1.125rem; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(244,113,86,0.45); opacity: 0; pointer-events: none; transform: translateY(16px); transition: opacity .2s, transform .2s; z-index: 60; }
+    .scroll-top-btn { position: fixed; bottom: 84px; right: 24px; width: 44px; height: 44px; border-radius: 50%; background: var(--color-primary); color: #fff; font-size: 1.125rem; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(244,80,46,0.45); opacity: 0; pointer-events: none; transform: translateY(16px); transition: opacity .2s, transform .2s; z-index: 60; }
     .scroll-top-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
   </style>
 </head>
@@ -170,7 +170,7 @@
     <div class="modal-sheet" id="modalSheet">
       <div class="modal-hero" id="modalHero">
         <div class="modal-hero-placeholder" id="modalHeroPlaceholder">🍽️</div>
-        <button class="modal-close" onclick="closeModal()">✕</button>
+        <button class="modal-close" onclick="closeModal()"><span class="ic" data-icon="close"></span></button>
       </div>
       <div class="modal-scroll-body">
         <div class="modal-body">
@@ -193,14 +193,14 @@
       </div>
       <div class="modal-btn-row">
         <button class="modal-icon-btn" id="modalSaveBtn" onclick="handleModalSave()">
-          <span class="icon" id="modalSaveIcon">🤍</span>
+          <span class="icon" id="modalSaveIcon" data-icon="heart"></span>
           <span class="label">저장</span>
         </button>
         <button class="modal-icon-btn" id="modalRegularBtn" onclick="handleModalRegular()">
-          <span class="icon">🏆</span>
+          <span class="icon" id="modalRegularIcon" data-icon="bookmark"></span>
           <span class="label" id="modalRegularLabel">단골</span>
         </button>
-        <button class="btn-primary" onclick="openKakaoNav()">길 찾기 ✈</button>
+        <button class="btn-primary" onclick="openKakaoNav()">길찾기<span class="ic" data-icon="navigation"></span></button>
       </div>
     </div>
   </div>
@@ -215,7 +215,7 @@
 
   <!-- 맨 위로 가기 -->
   <button class="scroll-top-btn" id="scrollTopBtn" aria-label="맨 위로"
-    onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+    onclick="window.scrollTo({top:0,behavior:'smooth'})"><span class="ic" data-icon="arrowUp"></span></button>
 
   <script>
     // 맨 위로 버튼 노출
@@ -252,6 +252,8 @@
       updateNavAvatar,
     } from "./firebase.js";
     import { onAuthChanged } from "./auth.js";
+    import { ICONS, applyIcons } from "./icons.js";
+    applyIcons();   // 정적 마크업의 data-icon 요소에 SVG 주입
 
     // ── 토스트 메시지 ──
     function showToast(msg) {
@@ -400,9 +402,9 @@
               : `<div class="card-img-placeholder">${getCategoryEmoji(r.category)}</div>`}
             ${status === 'closed' ? '<span class="card-closed-badge">영업종료</span>' : ''}
             ${status === 'break'  ? '<span class="card-break-badge">브레이크타임</span>' : ''}
-            ${regular ? '<span class="card-closed-badge" style="background:rgba(255,150,0,0.9);left:10px;bottom:10px;top:auto">🏆 단골</span>' : ''}
+            ${regular ? '<span class="card-closed-badge" style="background:rgba(255,150,0,0.9);left:10px;bottom:10px;top:auto">' + ICONS.bookmark + ' 단골</span>' : ''}
             <div class="card-heart" onclick="handleHeart(event,'${r.id}')" id="heart-${r.id}">
-              ${liked ? '❤️' : '🤍'}
+              ${liked ? ICONS.heartFill : ICONS.heart}
             </div>
           </div>
         </div>`;
@@ -419,7 +421,7 @@
         _lastCols = null;
         grid.innerHTML = `
           <div class="empty-state" style="flex:1">
-            <div class="empty-state-icon">🔍</div>
+            <div class="empty-state-icon">${ICONS.search}</div>
             <div class="empty-state-text">해당 카테고리 메뉴가 없습니다</div>
           </div>`;
         return;
@@ -454,12 +456,12 @@
       if (liked) {
         userLikes = userLikes.filter(id => id !== restaurantId);
         await removeLike(currentUser.uid, restaurantId);
-        heartEls.forEach(el => el.textContent = '🤍');
+        heartEls.forEach(el => el.innerHTML = ICONS.heart);
         showToast("좋아요 취소");
       } else {
         userLikes.push(restaurantId);
         await addLike(currentUser.uid, restaurantId);
-        heartEls.forEach(el => el.textContent = '❤️');
+        heartEls.forEach(el => el.innerHTML = ICONS.heartFill);
         showToast("좋아요 추가!");
       }
       if (currentRestaurant?.id === restaurantId) updateModalSaveBtn();
@@ -511,14 +513,14 @@
         : (restaurant.distance ? restaurant.distance + 'km' : '-');
 
       const metaRows = [
-        { icon: "🏷️", label: "카테고리", value: restaurant.category || "-" },
-        { icon: "📍", label: "거리",     value: distVal },
-        { icon: "🕐", label: "영업시간", value: restaurant.hours || "-" },
+        { icon: ICONS.tag,    label: "카테고리", value: restaurant.category || "-" },
+        { icon: ICONS.mapPin, label: "거리",     value: distVal },
+        { icon: ICONS.clock,  label: "영업시간", value: restaurant.hours || "-" },
       ];
       if (restaurant.break_time && restaurant.break_time !== "없음")
-        metaRows.push({ icon: "☕", label: "브레이크", value: restaurant.break_time });
+        metaRows.push({ icon: ICONS.coffee, label: "브레이크", value: restaurant.break_time });
       if (restaurant.closed_day && restaurant.closed_day !== "없음")
-        metaRows.push({ icon: "📅", label: "정기휴무", value: restaurant.closed_day });
+        metaRows.push({ icon: ICONS.calendarX, label: "정기휴무", value: restaurant.closed_day });
 
       document.getElementById("modalMeta").innerHTML = metaRows.map(r => `
         <div class="modal-meta-row">
@@ -574,7 +576,7 @@
       if (!currentRestaurant) return;
       const liked = userLikes.includes(currentRestaurant.id);
       const btn   = document.getElementById("modalSaveBtn");
-      document.getElementById("modalSaveIcon").textContent = liked ? '❤️' : '🤍';
+      document.getElementById("modalSaveIcon").innerHTML = liked ? ICONS.heartFill : ICONS.heart;
       btn.classList.toggle("active", liked);
     }
 
@@ -583,6 +585,7 @@
       const isRegular = userRegulars.includes(currentRestaurant.id);
       const btn       = document.getElementById("modalRegularBtn");
       btn.classList.toggle("active", isRegular);
+      document.getElementById("modalRegularIcon").innerHTML = isRegular ? ICONS.bookmarkFill : ICONS.bookmark;
       document.getElementById("modalRegularLabel").textContent = isRegular ? "단골 ✓" : "단골";
     }
 
@@ -623,7 +626,7 @@
       } else {
         userRegulars.push(currentRestaurant.id);
         await addRegular(currentUser.uid, currentRestaurant.id);
-        showToast("단골 등록! 🏆");
+        showToast("단골 등록");
       }
       updateModalRegularBtn();
       renderGrid();

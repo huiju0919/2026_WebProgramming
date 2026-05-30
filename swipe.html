@@ -422,16 +422,16 @@
 
     <!-- 버튼: cardDeck 밖에 위치, position:absolute로 카드와 정렬 -->
     <div class="swipe-buttons" id="swipeButtons">
-      <div class="swipe-btn-gutter"><button class="btn-nope" onclick="swipeLeft()">✕</button></div>
+      <div class="swipe-btn-gutter"><button class="btn-nope" onclick="swipeLeft()" data-icon="close"></button></div>
       <div class="swipe-btn-spacer"></div>
-      <div class="swipe-btn-gutter"><button class="btn-like" onclick="swipeRight()">❤️</button></div>
+      <div class="swipe-btn-gutter"><button class="btn-like" onclick="swipeRight()" data-icon="heartFill"></button></div>
     </div>
 
     <!-- 완료 화면 -->
     <div class="complete-screen" id="completeScreen">
-      <div class="complete-icon">🎯</div>
+      <div class="complete-icon" data-icon="target"></div>
       <div class="complete-title">취향 분석 완료!</div>
-      <div class="complete-subtitle">AI가 최적의 맛집을 찾고 있어요</div>
+      <div class="complete-subtitle">취향에 맞는 맛집을 고르고 있어요</div>
       <div class="spinner"></div>
     </div>
 
@@ -454,7 +454,7 @@
 
       <!-- 취향 기반 버튼 (로드 후 표시) -->
       <button class="start-option-card primary-card" id="btnTasteBased" onclick="startWithTaste()" style="display:none">
-        <div class="start-option-icon">🎯</div>
+        <div class="start-option-icon" data-icon="target"></div>
         <div class="start-option-text">
           <div class="option-title">취향 기반으로 탐색</div>
           <div class="option-sub">지금까지 쌓인 취향 데이터를 반영해<br/>더 정확한 카드를 보여드려요</div>
@@ -464,7 +464,7 @@
 
       <!-- 새로 시작 버튼 (로드 후 표시) -->
       <button class="start-option-card" id="btnFresh" onclick="startFresh()" style="display:none">
-        <div class="start-option-icon">🔀</div>
+        <div class="start-option-icon" data-icon="shuffle"></div>
         <div class="start-option-text">
           <div class="option-title">새로 시작</div>
           <div class="option-sub">취향 데이터 없이 0부터 탐색해요<br/>오늘은 색다른 걸 먹고 싶을 때!</div>
@@ -494,6 +494,8 @@
       getStorageUrl, loadRestaurantData, updateNavAvatar, getUserDoc,
     } from "./firebase.js";
     import { onAuthChanged } from "./auth.js";
+    import { ICONS, applyIcons } from "./icons.js";
+    applyIcons();
     // ── 상수 ──
     const TOTAL      = CONFIG.SWIPE.TOTAL;         // 18
     const FIRST      = CONFIG.SWIPE.FIRST_PHASE;   // 7
@@ -611,7 +613,7 @@
         const deck = document.getElementById("deckSpinner");
         if (deck) deck.innerHTML = `
           <div style="text-align:center;padding:24px;color:var(--color-text-secondary)">
-            <div style="font-size:2rem;margin-bottom:12px">😢</div>
+            <div style="font-size:2rem;margin-bottom:12px;color:var(--color-text-tertiary)">${ICONS.frown}</div>
             <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:var(--color-text-primary)">데이터를 불러오지 못했어요</div>
             <div style="font-size:13px;margin-bottom:20px">네트워크 연결을 확인하고 다시 시도해주세요</div>
             <button class="btn-primary" style="width:auto;padding:12px 28px"
@@ -1333,8 +1335,8 @@
       const menu     = restaurant.selectedMenu || null;
 
       card.innerHTML = `
-        <div class="swipe-overlay-like">LIKE 👍</div>
-        <div class="swipe-overlay-nope">NOPE 👎</div>
+        <div class="swipe-overlay-like">LIKE</div>
+        <div class="swipe-overlay-nope">NOPE</div>
         <div class="swipe-card-img">
           ${fallback}
         </div>
@@ -1490,14 +1492,14 @@
       // 1단계 완료 → 2단계 카드 생성
       // cardQueue에 아직 2단계 카드가 추가 안 됐을 때만 실행
       if (currentIndex === FIRST && cardQueue.length === FIRST) {
-        showPhaseBanner("🎯 취향을 반영한 카드를 준비했어요!");
+        showPhaseBanner("취향을 반영한 카드를 준비했어요!");
         buildSecondPhase();
         return;
       }
 
       // 2단계 완료 → 3단계 카드 생성
       if (currentIndex === FIRST + SECOND && cardQueue.length === FIRST + SECOND) {
-        showPhaseBanner("✨ 마지막 단계! 세부 취향을 파악할게요");
+        showPhaseBanner("마지막 단계! 세부 취향을 파악할게요");
         buildThirdPhase();
         return;
       }

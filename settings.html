@@ -256,6 +256,8 @@
   <script type="module">
     import { getUserSettings, updateUserSettings, updateNavAvatar, getUserDoc } from "./firebase.js";
     import { onAuthChanged, deleteAccount, linkGoogleAccount, unlinkGoogleAccount } from "./auth.js";
+    import { applyIcons } from "./icons.js";
+    applyIcons();
 
     let currentUser = null;
     let currentSettings = {};
@@ -267,7 +269,7 @@
         updateNavAvatar(null);
         document.getElementById("mainContent").innerHTML = `
           <div style="text-align:center; padding:60px 20px">
-            <div style="font-size:64px; margin-bottom:16px">🔐</div>
+            <div data-icon="shield" style="font-size:56px; margin-bottom:16px; color:var(--color-text-tertiary)"></div>
             <div style="font-size:18px; font-weight:700; margin-bottom:8px">로그인이 필요해요</div>
             <button class="btn-primary" onclick="location.href='./login.html'" style="margin-top:20px">
               로그인하기
@@ -294,7 +296,7 @@
             <!-- 현재 계정 -->
             <div class="linked-account">
               <div class="account-info">
-                <div class="account-icon">👤</div>
+                <div class="account-icon" data-icon="user"></div>
                 <div class="account-details">
                   <div class="account-email">${currentUser.email}</div>
                   <div class="account-date">현재 로그인 중</div>
@@ -309,7 +311,7 @@
                   .map(provider => `
                     <div class="linked-account">
                       <div class="account-info">
-                        <div class="account-icon">🔗</div>
+                        <div class="account-icon" data-icon="link"></div>
                         <div class="account-details">
                           <div class="account-email">${provider.email}</div>
                           <div class="account-date">연동된 계정</div>
@@ -396,11 +398,11 @@
     window.linkNewAccount = async function() {
       try {
         await linkGoogleAccount();
-        showToast("✅ 계정이 연동되었습니다");
+        showToast("계정이 연동되었습니다");
         renderSettings();
       } catch (error) {
         console.error(error);
-        showToast("❌ 연동 실패: " + error.message);
+        showToast("연동 실패: " + error.message);
       }
     };
 
@@ -408,11 +410,11 @@
       if (!confirm(`정말 ${email}의 연동을 해제하시겠어요?`)) return;
       try {
         await unlinkGoogleAccount();
-        showToast("✅ 계정 연동이 해제되었습니다");
+        showToast("계정 연동이 해제되었습니다");
         renderSettings();
       } catch (error) {
         console.error(error);
-        showToast("❌ 해제 실패: " + error.message);
+        showToast("해제 실패: " + error.message);
       }
     };
 
@@ -432,12 +434,12 @@
       }
 
       await updateUserSettings(currentUser.uid, currentSettings);
-      showToast("✅ 설정이 저장되었습니다");
+      showToast("설정이 저장되었습니다");
     };
 
     window.handleDeleteAccount = async function() {
       if (!currentUser) return;
-      if (!confirm('⚠️ 정말 계정을 삭제하시겠어요?\n\n이 작업은 되돌릴 수 없습니다.\n모든 데이터가 삭제됩니다.')) return;
+      if (!confirm('정말 계정을 삭제하시겠어요?\n\n이 작업은 되돌릴 수 없습니다.\n모든 데이터가 삭제됩니다.')) return;
       if (!confirm('한 번 더 확인합니다. 정말 삭제하시겠어요?')) return;
 
       try {
@@ -446,7 +448,7 @@
         setTimeout(() => location.href = './login.html', 1500);
       } catch (error) {
         console.error(error);
-        showToast("❌ 계정 삭제 실패: " + error.message);
+        showToast("계정 삭제 실패: " + error.message);
       }
     };
 
