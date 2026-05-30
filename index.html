@@ -393,7 +393,7 @@
       const liked   = userLikes.includes(r.id);
       const regular = userRegulars.includes(r.id);
       return `
-        <div class="restaurant-card" onclick="openModal('${r.id}')">
+        <div class="restaurant-card" onclick="openModal('${r.id}','${m.id}')">
           <div class="card-img-wrap">
             ${m.photo
               ? `<img class="card-img" src="${getStorageUrl(m.photo)}" alt="${m.name}" loading="lazy" onload="this.classList.add('is-loaded')" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="card-img-placeholder" style="display:none">${getCategoryEmoji(r.category)}</div>`
@@ -466,7 +466,7 @@
     };
 
     // ── 모달 열기 ──
-    window.openModal = async function (restaurantId) {
+    window.openModal = async function (restaurantId, selectedMenuId = null) {
       const restaurant = allRestaurants.find(r => r.id === restaurantId);
       if (!restaurant) return;
       currentRestaurant = restaurant;
@@ -535,19 +535,30 @@
       if (!menuCache[restaurantId]) {
         menuCache[restaurantId] = await getMenusByRestaurant(restaurantId);
       }
-      const menus = menuCache[restaurantId];
+      let menus = [...menuCache[restaurantId]];
+      // 클릭한 메뉴를 맨 위로 이동
+      if (selectedMenuId) {
+        const i = menus.findIndex(m => m.id === selectedMenuId);
+        if (i > -1) menus = [menus[i], ...menus.slice(0, i), ...menus.slice(i + 1)];
+      }
       const menuList = document.getElementById("modalMenuList");
       menuList.innerHTML = menus.length > 0
-        ? menus.map(m => `
-          <div class="menu-item">
+        ? menus.map(m => {
+          const picked = selectedMenuId && m.id === selectedMenuId;
+          return `
+          <div class="menu-item${picked ? ' menu-item--picked' : ''}">
             <div class="menu-item-left">
               ${m.photo
                 ? `<img class="menu-photo" src="${getStorageUrl(m.photo)}" alt="${m.name}" onerror="this.outerHTML='<div class=\\'menu-photo-placeholder\\'>🍽️</div>'" />`
                 : `<div class="menu-photo-placeholder">🍽️</div>`}
-              <span class="menu-name">${m.name}</span>
+              <div class="menu-name-wrap">
+                ${picked ? '<span class="menu-pick-badge">✓ 내가 고른 메뉴</span>' : ''}
+                <span class="menu-name">${m.name}</span>
+              </div>
             </div>
             <span class="menu-price">${m.price ? m.price.toLocaleString() + '원' : '-'}</span>
-          </div>`).join('')
+          </div>`;
+        }).join('')
         : '<p style="color:var(--color-text-tertiary);font-size:0.8125rem">메뉴 정보가 없습니다</p>';
 
       updateModalSaveBtn();
