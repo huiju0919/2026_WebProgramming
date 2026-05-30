@@ -349,11 +349,16 @@ export function updateNavAvatar(user, userData) {
   }
 }
 
+// 현재 시각을 서울(KST) 기준으로 반환 — 디바이스 타임존과 무관하게 영업상태 계산
+export function seoulNow() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+}
+
 // 영업 상태 반환: "open" | "closed" | "break"
 export function getOpenStatus(restaurant) {
   if (!restaurant.hours) return "open";
   try {
-    const now    = new Date();
+    const now    = seoulNow();
     const today  = ["일","월","화","수","목","금","토"][now.getDay()];
     const nowMin = now.getHours() * 60 + now.getMinutes();
 

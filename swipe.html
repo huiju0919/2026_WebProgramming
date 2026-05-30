@@ -256,10 +256,9 @@
 
     /* ── 시작 모달 ── */
     .start-modal-overlay {
-      position: fixed;
+      position: absolute;   /* 덱(card-deck) 영역 안에만 — 헤더/내비를 막지 않음 */
       inset: 0;
-      background: rgba(0,0,0,0.55);
-      z-index: 400;
+      z-index: 5;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -443,7 +442,7 @@
   <!-- 시작 모달 -->
   <div class="start-modal-overlay" id="startModalOverlay" style="display:none">
     <div class="start-modal-sheet">
-      <div class="start-modal-title">🍽️ 어떻게 시작할까요?</div>
+      <div class="start-modal-title">어떻게 시작할까요?</div>
       <p class="start-modal-desc" id="startModalDesc"></p>
 
       <!-- 로딩 중 표시 -->
@@ -631,7 +630,11 @@
       const btnFresh  = document.getElementById("btnFresh");
       const chipsEl   = document.getElementById("tasteStatChips");
 
-      // 모달 표시 (로딩 상태)
+      // 인라인 표시: 시작 시트를 덱 안으로 이동 + 스피너/버튼 숨김
+      // (전체화면 오버레이가 아니라 덱 영역에만 떠서 헤더 내비는 계속 클릭 가능)
+      document.getElementById("cardDeck").appendChild(overlay);
+      document.getElementById("deckSpinner").style.display = "none";
+      document.getElementById("swipeButtons").style.display = "none";
       overlay.style.display = "flex";
       loadingEl.style.display = "flex";
       btnTaste.style.display = "none";

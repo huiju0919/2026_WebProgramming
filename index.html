@@ -248,7 +248,7 @@
       getAllMenus, getMenusByRestaurant,
       addLike, removeLike, addRecentView, getUserDoc,
       addRegular, removeRegular,
-      getStorageUrl, getRestaurantPhoto, getOpenStatus, calcDistanceM, formatDistance, loadRestaurantData,
+      getStorageUrl, getRestaurantPhoto, getOpenStatus, seoulNow, calcDistanceM, formatDistance, loadRestaurantData,
       updateNavAvatar,
     } from "./firebase.js";
     import { onAuthChanged } from "./auth.js";
@@ -498,7 +498,7 @@
       badge.textContent = statusMap[status].text;
       badge.className   = `badge ${statusMap[status].cls}`;
 
-      const today = ["일","월","화","수","목","금","토"][new Date().getDay()];
+      const today = ["일","월","화","수","목","금","토"][seoulNow().getDay()];
       const isHoliday = restaurant.closed_day && restaurant.closed_day !== "없음" && restaurant.closed_day.includes(today);
       document.querySelector(".badge-holiday")?.remove();
       if (isHoliday) {

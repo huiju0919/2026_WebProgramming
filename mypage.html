@@ -689,7 +689,7 @@
              updateUserProfile,
              getTasteProfile, resetTasteProfile,
              getBlockedMenus, unblockMenu, clearBlockedMenus,
-             getStorageUrl, getRestaurantPhoto, getOpenStatus, formatDistance, loadRestaurantData,
+             getStorageUrl, getRestaurantPhoto, getOpenStatus, seoulNow, formatDistance, loadRestaurantData,
              updateNavAvatar,
            } from "./firebase.js";
     import { onAuthChanged, logout } from "./auth.js";
@@ -1363,7 +1363,7 @@
         <div class="settings-section" style="margin:0 var(--spacing-md)">
           <div class="settings-group-title">디스플레이</div>
           <div class="settings-row" onclick="toggleDarkMode()">
-            <div class="settings-icon" style="background:#1A1A2E">🌙</div>
+            <div class="settings-icon" style="background:#1A1A2E;color:#fff">${ICONS.moon}</div>
             <div class="settings-label">
               <div class="settings-name">다크 모드</div>
               <div class="settings-desc">어두운 테마로 전환</div>
@@ -1371,7 +1371,7 @@
             <button class="toggle-switch ${isDark?'on':''}" id="darkToggle"></button>
           </div>
           <div class="settings-row" style="cursor:default">
-            <div class="settings-icon" style="background:#FFF3E0">🔤</div>
+            <div class="settings-icon" style="background:#FFF3E0;color:#E8833A">${ICONS.type}</div>
             <div class="settings-label">
               <div class="settings-name">글자 크기</div>
               <div class="settings-desc" id="fontSizeLabel">${labels[sizes.indexOf(fontSize)]||'보통'}</div>
@@ -1383,7 +1383,7 @@
           </div>
           <div class="settings-group-title">지원</div>
           <div class="settings-row" onclick="openCustomerService()">
-            <div class="settings-icon" style="background:#E3F2FD">💬</div>
+            <div class="settings-icon" style="background:#E3F2FD;color:#2D7DD2">${ICONS.message}</div>
             <div class="settings-label">
               <div class="settings-name">고객센터</div>
               <div class="settings-desc">문의 및 피드백</div>
@@ -1391,7 +1391,7 @@
             <span class="settings-right">›</span>
           </div>
           <div class="settings-row" onclick="openPrivacyPolicy()">
-            <div class="settings-icon" style="background:#F3E5F5">🔒</div>
+            <div class="settings-icon" style="background:#F3E5F5;color:#9C5FB8">${ICONS.lock}</div>
             <div class="settings-label">
               <div class="settings-name">개인정보처리방침</div>
               <div class="settings-desc">데이터 수집 및 이용 안내</div>
@@ -1399,7 +1399,7 @@
             <span class="settings-right">›</span>
           </div>
           <div class="settings-row" onclick="showAppInfo()">
-            <div class="settings-icon" style="background:#E8F5E9">ℹ️</div>
+            <div class="settings-icon" style="background:#E8F5E9;color:#3C9A5F">${ICONS.info}</div>
             <div class="settings-label">
               <div class="settings-name">앱 정보</div>
               <div class="settings-desc">버전 1.0.0</div>
@@ -1409,7 +1409,7 @@
           ${loggedIn ? `
           <div class="settings-group-title">계정</div>
           <div class="settings-row" onclick="location.href='./settings.html'">
-            <div class="settings-icon" style="background:#E8EAF6">🛠️</div>
+            <div class="settings-icon" style="background:#E8EAF6;color:#5C6BC0">${ICONS.settings}</div>
             <div class="settings-label">
               <div class="settings-name">환경설정</div>
               <div class="settings-desc">알림·개인정보·계정 연동·탈퇴</div>
@@ -1417,7 +1417,7 @@
             <span class="settings-right">›</span>
           </div>
           <div class="settings-row" onclick="openLogoutConfirm();closeEditProfile()">
-            <div class="settings-icon" style="background:#FFEBEE">🚪</div>
+            <div class="settings-icon" style="background:#FFEBEE;color:var(--color-danger)">${ICONS.logOut}</div>
             <div class="settings-label">
               <div class="settings-name" style="color:var(--color-danger)">로그아웃</div>
             </div>
@@ -1673,7 +1673,7 @@
       badge.textContent = statusMap[status].text;
       badge.className   = `badge ${statusMap[status].cls}`;
 
-      const today = ["일","월","화","수","목","금","토"][new Date().getDay()];
+      const today = ["일","월","화","수","목","금","토"][seoulNow().getDay()];
       const isHoliday = restaurant.closed_day && restaurant.closed_day !== "없음" && restaurant.closed_day.includes(today);
       document.querySelector(".badge-holiday")?.remove();
       if (isHoliday) {
