@@ -49,6 +49,10 @@
     .category-tab { padding: 9px 18px; border-radius: 999px; font-size: 14px; font-weight: 600; background: var(--color-bg-card); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer; transition: all .16s; font-family: var(--font-main); white-space: nowrap; }
     .category-tab:hover { border-color: var(--color-primary); color: var(--color-primary); transform: translateY(-1px); }
     .category-tab.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); box-shadow: var(--shadow-btn); }
+    .taste-tabs { display: flex; flex-wrap: wrap; gap: 8px; max-width: var(--max-width); margin: 0 auto; padding: 6px 32px 0; }
+    .taste-tab { padding: 6px 13px; border-radius: 999px; font-size: 13px; font-weight: 500; background: var(--color-bg-input); color: var(--color-text-secondary); border: none; cursor: pointer; transition: all .16s; font-family: var(--font-main); white-space: nowrap; }
+    .taste-tab:hover { color: var(--color-primary); }
+    .taste-tab.active { background: var(--color-primary-light); color: var(--color-primary-dark); font-weight: 700; }
 
     /* ── 필터 바 ── */
     .filter-bar { display: flex; align-items: center; justify-content: space-between; max-width: var(--max-width); margin: 0 auto; padding: 16px 32px; }
@@ -137,6 +141,17 @@
       <button class="category-tab" data-category="아시아">아시아</button>
     </div>
 
+    <!-- 맛 필터 -->
+    <div class="taste-tabs" id="tasteTabs">
+      <button class="taste-tab active" data-taste="전체">맛 전체</button>
+      <button class="taste-tab" data-taste="매콤한">매콤한</button>
+      <button class="taste-tab" data-taste="국물/탕">국물</button>
+      <button class="taste-tab" data-taste="바삭한">바삭한</button>
+      <button class="taste-tab" data-taste="담백한">담백한</button>
+      <button class="taste-tab" data-taste="단짠">단짠</button>
+      <button class="taste-tab" data-taste="달콤한">달콤한</button>
+    </div>
+
     <!-- 필터 바 -->
     <div class="filter-bar">
       <span class="result-count" id="resultCount">메뉴 로딩 중...</span>
@@ -148,7 +163,6 @@
         <div class="sort-menu">
           <button class="sort-option active" onclick="selectSort('random','랜덤',this)">랜덤</button>
           <button class="sort-option" onclick="selectSort('distance','거리순',this)">거리순</button>
-          <button class="sort-option" onclick="selectSort('category','카테고리순',this)">카테고리순</button>
         </div>
       </div>
     </div>
@@ -275,6 +289,7 @@
     let userRegulars      = [];
     let currentRestaurant = null;
     let currentCategory   = "전체";
+    let currentTaste      = "전체";
     let currentSort       = "random";
 
     let _authReady = false;
@@ -329,6 +344,16 @@
       applyFilterAndSort();
     });
 
+    // ── 맛 필터 ──
+    document.getElementById("tasteTabs").addEventListener("click", (e) => {
+      const tab = e.target.closest(".taste-tab");
+      if (!tab) return;
+      document.querySelectorAll(".taste-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      currentTaste = tab.dataset.taste;
+      applyFilterAndSort();
+    });
+
     // ── 정렬 드롭다운 ──
     window.toggleSortMenu = function () {
       document.getElementById("sortDropdown").classList.toggle("open");
@@ -360,6 +385,9 @@
       if (currentCategory !== "전체") {
         menus = menus.filter(m => m.restaurant.category === currentCategory);
       }
+      if (currentTaste !== "전체") {
+        menus = menus.filter(m => (m.tags || "").split(",").map(t => t.trim()).includes(currentTaste));
+      }
 
       if (currentSort === "distance") {
         menus.sort((a, b) => {
@@ -368,8 +396,6 @@
           const db = (r2.lat && r2.lng) ? calcDistanceM(CONFIG.HANSUNG_LAT, CONFIG.HANSUNG_LNG, r2.lat, r2.lng) : 99999;
           return da - db;
         });
-      } else if (currentSort === "category") {
-        menus.sort((a, b) => a.restaurant.category.localeCompare(b.restaurant.category));
       } else {
         menus.sort(() => Math.random() - 0.5);
       }
