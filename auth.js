@@ -4,23 +4,73 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  linkWithPopup,           
+  unlink,                  
+  reauthenticateWithPopup, 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { auth, getUserDoc } from "./firebase.js";
+import { auth, getUserDoc, deleteUserData } from "./firebase.js";
 
 const provider = new GoogleAuthProvider();
 
-// 구글 로그인
+// 구글 로그인 (팝업 방식)
 export async function loginWithGoogle() {
   const result = await signInWithPopup(auth, provider);
   const user = result.user;
-  // 사용자 문서 없으면 생성
   await getUserDoc(user.uid);
   return user;
+}
+
+// 구글 계정 연동
+export async function linkGoogleAccount() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("로그인된 사용자가 없습니다");
+
+  try {
+    const result = await linkWithPopup(user, provider);
+    return result.user;
+  } catch (error) {
+    if (error.code === "auth/credential-already-in-use") {
+      throw new Error("이미 다른 계정에 연동된 구글 계정입니다");
+    }
+    throw error;
+  }
+}
+
+// 계정 연동 해제
+export async function unlinkGoogleAccount() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("로그인된 사용자가 없습니다");
+  await unlink(user, "google.com");
 }
 
 // 로그아웃
 export async function logout() {
   await signOut(auth);
+}
+// Firestore 삭제 → Auth 계정 삭제 → 로그아웃
+async function _deleteAccountInternal() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("로그인된 사용자가 없습니다");
+
+  await deleteUserData(user.uid);
+  await user.delete();
+  await signOut(auth);
+}
+
+// 계정 삭제
+export async function deleteAccount() {
+  try {
+    await _deleteAccountInternal();
+  } catch (error) {
+    if (error.code === "auth/requires-recent-login") {
+      const user = auth.currentUser;
+      if (!user) throw error;
+      await reauthenticateWithPopup(user, provider);
+      await _deleteAccountInternal();
+    } else {
+      throw error;
+    }
+  }
 }
 
 // 현재 로그인된 사용자 가져오기
@@ -29,7 +79,6 @@ export function getCurrentUser() {
 }
 
 // 로그인 상태 감지 (페이지 로드 시 사용)
-// callback: (user) => {} — user가 null이면 비로그인
 export function onAuthChanged(callback) {
   onAuthStateChanged(auth, callback);
 }

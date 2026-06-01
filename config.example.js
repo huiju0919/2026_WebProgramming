@@ -11,14 +11,15 @@ const CONFIG = {
     messagingSenderId: "",
     appId: "",
   },
-  GEMINI_API_KEY: "",
+  GROQ_API_KEY: "", //Groq, Gemini 뭐든 상관 없음
   KAKAO_MAP_KEY: "",
   HANSUNG_LAT: 37.5826,
   HANSUNG_LNG: 127.0108,
   SWIPE: {
-    TOTAL: 15,
-    FIRST_PHASE: 8,
+    TOTAL: 18,
+    FIRST_PHASE: 7,
     SECOND_PHASE: 7,
+    THIRD_PHASE: 4,
   },
   RECOMMEND_COUNT: 3,
 };
