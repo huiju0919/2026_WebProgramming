@@ -1,0 +1,79 @@
+/* ═══════════════════════════════════════════════
+   theme.css — 다크모드 + 폰트 크기 전역 적용
+   모든 HTML 파일의 common.css 다음 줄에 추가:
+   <link rel="stylesheet" href="./theme.css" />
+   <script src="./theme.js"></script>  ← <head> 최상단
+═══════════════════════════════════════════════ */
+
+/* ── 다크모드 ── */
+html[data-theme="dark"] {
+  --color-bg:             #15110D;
+  --color-bg-card:        #1F1A14;
+  --color-bg-input:       #2A231C;
+  --color-text-primary:   #FAF6F0;
+  --color-text-secondary: #B8AC9C;
+  --color-text-tertiary:  #7A6E5F;
+  --color-border:         #2E2620;
+  --color-border-light:   #251F1A;
+  --color-primary:        #F4502E;
+  --color-primary-light:  #3A241B;
+  --color-primary-dark:   #C8401F;
+  --header-bg:            rgba(21, 17, 13, 0.78);
+  --shadow-card:          0 2px 12px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-card-hover:    0 22px 44px rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.35);
+  --shadow-modal:         0 30px 80px rgba(0,0,0,0.6), 0 12px 24px rgba(0,0,0,0.4);
+  --shadow-btn:           0 6px 20px rgba(244,80,46,0.35);
+}
+
+html[data-theme="dark"] body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] img {
+  opacity: 0.92;
+}
+
+/* ── 폰트(글자) 크기 ── */
+/* 루트(html) font-size만 조절 → rem 단위 글자가 스케일링.
+   박스/패딩/위젯은 px 절대값이라 그대로 유지(레이아웃 안 커짐).
+   페이지의 px 글자들은 rem으로 환산해 두어 함께 커진다. */
+html[data-font-size="sm"] { font-size: 14px; }
+html[data-font-size="md"] { font-size: 16px; }
+html[data-font-size="lg"] { font-size: 18.5px; }
+html[data-font-size="xl"] { font-size: 21px; }
+
+/* ═══════════════════════════════════════════════
+   대표색(Accent) 팔레트 — data-accent 속성으로 전환
+   - 대표색 자체(--color-primary)는 다크/라이트 동일(라이트 기준)
+   - 다크모드에서는 연한배경(--color-primary-light)만 어두운 톤으로 교체
+     (밝은 파스텔 배경이 다크 UI에서 튀는 것 방지)
+   - data-accent="custom" 은 settings에서 inline 변수로 직접 주입
+═══════════════════════════════════════════════ */
+
+/* ── 대표색 (라이트=다크 공통) ── */
+html[data-accent="red"]    { --color-primary:#E53935; --color-primary-light:#FFE5E3; --color-primary-dark:#B71C1C; --shadow-btn:0 6px 18px rgba(229,57,53,0.32); }
+html[data-accent="amber"]  { --color-primary:#E8961B; --color-primary-light:#FFF1D6; --color-primary-dark:#C77F00; --shadow-btn:0 6px 18px rgba(232,150,27,0.32); }
+html[data-accent="green"]  { --color-primary:#2E9E5B; --color-primary-light:#DDF3E4; --color-primary-dark:#1F7A43; --shadow-btn:0 6px 18px rgba(46,158,91,0.32); }
+html[data-accent="blue"]   { --color-primary:#2D7FF9; --color-primary-light:#DCEBFF; --color-primary-dark:#1A5FCC; --shadow-btn:0 6px 18px rgba(45,127,249,0.32); }
+html[data-accent="purple"] { --color-primary:#7C4DFF; --color-primary-light:#ECE3FF; --color-primary-dark:#5E2EE6; --shadow-btn:0 6px 18px rgba(124,77,255,0.32); }
+html[data-accent="pink"]   { --color-primary:#E84393; --color-primary-light:#FFE0F0; --color-primary-dark:#C72C77; --shadow-btn:0 6px 18px rgba(232,67,147,0.32); }
+
+/* ── 다크모드: 대표색은 위와 동일하게 유지, 연한배경만 어둡게 ── */
+html[data-theme="dark"][data-accent="red"]    { --color-primary:#E53935; --color-primary-light:#3A1C1B; --color-primary-dark:#B71C1C; }
+html[data-theme="dark"][data-accent="amber"]  { --color-primary:#E8961B; --color-primary-light:#3A2E18; --color-primary-dark:#C77F00; }
+html[data-theme="dark"][data-accent="green"]  { --color-primary:#2E9E5B; --color-primary-light:#18301F; --color-primary-dark:#1F7A43; }
+html[data-theme="dark"][data-accent="blue"]   { --color-primary:#2D7FF9; --color-primary-light:#18233A; --color-primary-dark:#1A5FCC; }
+html[data-theme="dark"][data-accent="purple"] { --color-primary:#7C4DFF; --color-primary-light:#241B3A; --color-primary-dark:#5E2EE6; }
+html[data-theme="dark"][data-accent="pink"]   { --color-primary:#E84393; --color-primary-light:#3A1B2E; --color-primary-dark:#C72C77; }
+
+/* 커스텀 색: --color-primary 등은 inline style로 주입되므로 여기선 규칙 불필요
+   (연한배경은 color-mix로 라이트/다크 양쪽에 자연스럽게 적용) */
