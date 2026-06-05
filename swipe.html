@@ -508,6 +508,7 @@
     // ── 상태 ──
     let allRestaurants = [];
     let allMenus = [];        // 전체 메뉴 목록
+    let tagIdf = {};          // 태그 희소도 가중치 (흔할수록 낮음)
     let cardQueue = [];       // 15장 카드 목록 (각 항목에 selectedMenu 포함)
     let currentIndex = 0;
     let likes = [];           // 좋아요한 메뉴 정보 { restaurantId, menuId, main_attribute, tags }
@@ -588,6 +589,9 @@
           ...r,
           menus: menus.filter(m => m.restaurantId === r.id),
         }));
+
+        // 태그 희소도(IDF) 계산: 흔한 태그는 가중치↓, 희귀한 태그는 가중치↑
+        computeTagIdf();
 
         // 로그인 유저면 차단 메뉴 로드
         if (currentUser) {
@@ -701,14 +705,39 @@
     const ATTRIBUTES = ["meat","seafood","rice_noodle","spicy","greasy","mild","sweet_sour"];
 
     // ── 메뉴명 정규화 (중복 비교용, 원본은 그대로 유지) ──
+    // 유사 메뉴를 하나의 대표 키워드로 묶기 (중복 방지용)
+    const KEYWORD_GROUPS = [
+      { key: "탕수육",   syn: ["탕수육", "꿔바로우", "궈바로우", "유린기", "깐풍"] },
+      { key: "소바",     syn: ["소바", "메밀"] },
+      { key: "파스타",   syn: ["파스타", "스파게티", "스파게띠", "로제", "까르보나라", "카르보나라", "알리오", "뇨끼"] },
+      { key: "라멘",     syn: ["라멘", "쇼유", "미소라멘", "돈코츠", "츠케멘"] },
+      { key: "초밥",     syn: ["초밥", "스시", "사시미", "오마카세", "회덮밥", "물회"] },
+      { key: "돈카츠",   syn: ["돈카츠", "돈가스", "카츠", "가츠"] },
+      { key: "국밥",     syn: ["국밥", "순대국", "돼지국밥", "소머리국밥", "해장국", "뼈해장국"] },
+      { key: "덮밥",     syn: ["덮밥", "규동", "가츠동", "오야꼬동", "사케동", "텐동", "회덮밥"] },
+      { key: "마라",     syn: ["마라탕", "마라샹궈", "마라"] },
+      { key: "짜장",     syn: ["짜장", "간짜장", "유니짜장"] },
+      { key: "짬뽕",     syn: ["짬뽕", "짬뽕밥"] },
+      { key: "떡볶이",   syn: ["떡볶이", "즉석떡볶이", "로제떡볶이", "국물떡볶이"] },
+      { key: "부대찌개", syn: ["부대찌개", "부대전골"] },
+      { key: "쌀국수",   syn: ["쌀국수", "포보", "분짜"] },
+      { key: "카레",     syn: ["카레", "커리"] },
+      { key: "비빔밥",   syn: ["비빔밥", "돌솥비빔밥"] },
+    ];
+
     function normalizeMenuName(name) {
       if (!name) return "";
-      return String(name)
+      const n = String(name)
         .replace(/\(.*?\)/g, "")              // (1인분), (2~3인) 등 괄호 제거
         .replace(/\s*(소|중|대|특)/g, "")   // 크기 표현 제거
         .replace(/\d+(kg|g|인분)/g, "")       // 용량/인분 표현 제거
         .replace(/^\d+\s*/, "")               // 앞자리 숫자 제거 (1kg 탕수육 → 탕수육)
         .trim();
+      // 유사 메뉴는 대표 키워드로 묶음 (탕수육/꿔바로우/유린기 → 탕수육)
+      for (const g of KEYWORD_GROUPS) {
+        if (g.syn.some(s => n.includes(s))) return g.key;
+      }
+      return n;
     }
 
     // 배열을 무작위로 섞는 유틸
@@ -724,6 +753,14 @@
     // 배열에서 랜덤 1개 선택
     function randPick(arr) {
       return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    // 점수 후보들 중 상위 K개를 모아 그 안에서 랜덤 선택 (1등 고정 쏠림 방지)
+    function pickTopK(cands, k = 5) {
+      if (!cands.length) return null;
+      cands.sort((a, b) => b.score - a.score);
+      const top = cands.slice(0, Math.min(k, cands.length));
+      return randPick(top);
     }
 
     function buildCardQueue() {
@@ -863,9 +900,30 @@
 
     // 메뉴의 태그 점수 합산
     // dislikeOnlyTags에 포함된 태그가 있으면 패널티
+    // 전체 메뉴에서 각 태그 등장 빈도 → IDF 가중치 (흔한 태그 점수 기여 ↓)
+    function computeTagIdf() {
+      const df = {};
+      let total = 0;
+      for (const m of allMenus) {
+        total++;
+        const tags = m.tags?.split(",").map(t => t.trim()).filter(Boolean) || [];
+        for (const t of new Set(tags)) df[t] = (df[t] || 0) + 1;
+      }
+      tagIdf = {};
+      const N = Math.max(total, 1);
+      for (const [t, f] of Object.entries(df)) {
+        // log 스케일 IDF, 1.0 부근으로 정규화 (희귀 태그 ↑, 흔한 태그 ↓)
+        tagIdf[t] = Math.log((N + 1) / (f + 1)) + 0.3;
+      }
+    }
+    function idfOf(tag) {
+      return tagIdf[tag] != null ? tagIdf[tag] : 1;   // 미등록 태그는 1
+    }
+
     function calcMenuScore(menu, tagScore, dislikeOnlyTags = []) {
       const tags = menu.tags?.split(",").map(t => t.trim()) || [];
-      const baseScore = tags.reduce((sum, t) => sum + (tagScore[t] || 0), 0);
+      // 태그 희소도(IDF)로 가중: 흔한 태그는 적게, 희귀한 태그는 크게 반영
+      const baseScore = tags.reduce((sum, t) => sum + (tagScore[t] || 0) * idfOf(t), 0);
       const penalty   = tags.filter(t => dislikeOnlyTags.includes(t)).length * 2;
       return baseScore - penalty;
     }
@@ -990,8 +1048,7 @@
       if (targetTags.length === 0) return null;
 
       // DB에서 targetTags 중 하나를 가지면서 fixedTags도 가진 메뉴 탐색
-      let bestCandidate = null;
-      let bestScore     = -Infinity;
+      const cands = [];
 
       for (const r of allRestaurants) {
         if (usedRests.has(r.id)) continue; // usedRests에 싫어요 식당 id 포함됨
@@ -1010,16 +1067,14 @@
           // 점수: tagScore 기반 + 고정 태그 일치 보너스
           const fixedBonus = fixedTags.filter(t => mTags.includes(t)).length * 3;
           const score      = calcMenuScore(m, tagScore, dislikeOnlyTags) + fixedBonus;
-
-          if (score > bestScore) {
-            bestScore = score;
-            bestCandidate = { r, m };
-          }
+          cands.push({ r, m, score });
         }
       }
+      let bestCandidate = pickTopK(cands, 5);   // 1등 고정 대신 상위 5개 중 랜덤
 
       // fixedTags 조건 완화 fallback: fixedTags 없이 targetTags만으로 재탐색
       if (!bestCandidate && fixedTags.length > 0) {
+        const cands2 = [];
         for (const r of allRestaurants) {
           if (usedRests.has(r.id)) continue;
           for (const m of r.menus || []) {
@@ -1027,12 +1082,10 @@
             const hasTarget = targetTags.some(t => mTags.includes(t));
             if (!hasTarget) continue;
             const score = calcMenuScore(m, tagScore, dislikeOnlyTags);
-            if (score > bestScore) {
-              bestScore = score;
-              bestCandidate = { r, m };
-            }
+            cands2.push({ r, m, score });
           }
         }
+        bestCandidate = pickTopK(cands2, 5);
       }
 
       return bestCandidate;
@@ -1062,6 +1115,16 @@
         return true;
       };
 
+      // 가끔 점수와 무관한 무작위 카드 (다양성 확보용 와일드카드)
+      const pickWildcard = () => {
+        const pool = shuffle(allRestaurants.filter(r => !pickedRests.has(r.id) && (r.menus || []).length));
+        for (const r of pool) {
+          const ms = shuffle(r.menus).filter(m => !usedMenuNames.has(normalizeMenuName(m.name)) && !blockedMenuIds.has(m.id));
+          if (ms.length) return { r, m: ms[0] };
+        }
+        return null;
+      };
+
       // ── REFINE: 좋아요 >= 60% → 선호 속성 깊게 파고들기 ──
       // 좋아요한 것과 변수 1개만 바꾼 카드를 최대한 많이
       if (strategy === "REFINE") {
@@ -1071,11 +1134,12 @@
           const result = pickContrastCard(item, pickedRests, tagScore, dislikeOnlyTags);
           if (result) addCard(result.r, result.m);
         }
-        // 남은 장수: 좋아요 항목 반복하며 추가 대립 탐색
+        // 남은 장수: 좋아요 항목 반복하며 추가 대립 탐색 (가끔 와일드카드)
         const shuffled = shuffle(likes);
         let att = 0;
         while (secondPhase.length < SECOND && att < shuffled.length * 4) {
-          const result = pickContrastCard(shuffled[att % shuffled.length], pickedRests, tagScore, dislikeOnlyTags);
+          let result = (Math.random() < 0.15) ? pickWildcard() : null;
+          if (!result) result = pickContrastCard(shuffled[att % shuffled.length], pickedRests, tagScore, dislikeOnlyTags);
           if (result) addCard(result.r, result.m);
           att++;
         }
@@ -1127,11 +1191,12 @@
           const result = pickContrastCard(item, pickedRests, tagScore, dislikeOnlyTags);
           if (result) addCard(result.r, result.m);
         }
-        // 남은 장수: 좋아요 추가 대립
+        // 남은 장수: 좋아요 추가 대립 (가끔 와일드카드)
         const shuffled = shuffle(likes);
         let att = 0;
         while (secondPhase.length < SECOND && att < shuffled.length * 3) {
-          const result = pickContrastCard(shuffled[att % shuffled.length], pickedRests, tagScore, dislikeOnlyTags);
+          let result = (Math.random() < 0.15) ? pickWildcard() : null;
+          if (!result) result = pickContrastCard(shuffled[att % shuffled.length], pickedRests, tagScore, dislikeOnlyTags);
           if (result) addCard(result.r, result.m);
           att++;
         }
@@ -1218,8 +1283,7 @@
       for (const cat of sortedCats) {
         if (thirdPhase.length >= THIRD) break;
 
-        let bestCandidate = null;
-        let bestScore     = -Infinity;
+        const cands = [];
 
         for (const r of allRestaurants) {
           if (r.category !== cat) continue;
@@ -1237,12 +1301,10 @@
             }, 0);
 
             const totalScore = uncertainScore + calcMenuScore(m, tagScore, dislikeOnlyTags);
-            if (totalScore > bestScore) {
-              bestScore = totalScore;
-              bestCandidate = { r, m };
-            }
+            cands.push({ r, m, score: totalScore });
           }
         }
+        const bestCandidate = pickTopK(cands, 5);   // 카테고리 내 상위 5개 중 랜덤
 
         if (bestCandidate) {
           thirdPhase.push({ ...bestCandidate.r, selectedMenu: bestCandidate.m });

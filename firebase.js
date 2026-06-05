@@ -103,9 +103,10 @@ export async function getUserDoc(uid) {
 }
 
 // 메뉴 좋아요 추가
-export async function addMenuLike(uid, menuId) {
+export async function addMenuLike(uid, menuId, restaurantId) {
   const userRef = doc(db, "users", uid);
   await updateDoc(userRef, { menuLikes: arrayUnion(menuId) });
+  if (restaurantId) logActivity(uid, "like", restaurantId, { menuId });
 }
 
 // 메뉴 좋아요 제거
@@ -556,7 +557,16 @@ export async function getRestaurantReviews(restaurantId, viewerUid, friendUids =
 // ── 활동 로그 (친구 활동 피드용) ──
 async function logActivity(uid, type, restaurantId, extra = {}) {
   try {
-    await addDoc(collection(db, "activities"), { uid, type, restaurantId, ts: Date.now(), ...extra });
+    // 활동 시점의 공개 여부를 박제 (나중에 설정을 바꿔도 이 값은 유지)
+    let shared = true;
+    try {
+      const s = await getUserSettings(uid);
+      const key = type === "like" ? "shareLikes"
+                : type === "regular" ? "shareRegulars"
+                : type === "review" ? "shareReviews" : null;
+      if (key) shared = s?.[key] !== false;
+    } catch (e) {}
+    await addDoc(collection(db, "activities"), { uid, type, restaurantId, ts: Date.now(), shared, ...extra });
   } catch (e) {}
 }
 
@@ -574,8 +584,9 @@ export async function getFriendsFeed(friendUids = [], limitN = 30) {
       snap.forEach(d => all.push({ id: d.id, ...d.data() }));
     } catch (e) {}
   }
-  // 비공개 리뷰는 제외
-  const visible = all.filter(a => !(a.type === "review" && a.visibility === "private"));
+  // 활동 당시 공개였던 것만 (shared===false면 제외), 비공개 리뷰 제외
+  // (shared 필드가 없는 과거 기록은 공개로 간주)
+  const visible = all.filter(a => a.shared !== false && !(a.type === "review" && a.visibility === "private"));
   visible.sort((x, y) => (y.ts || 0) - (x.ts || 0));
   return visible.slice(0, limitN);
 }

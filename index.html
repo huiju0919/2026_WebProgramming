@@ -83,15 +83,14 @@
     @media (max-width: 700px)  { .restaurant-grid { column-count: 2; } }
 
     /* ── 카드 (사진만, 원본 비율 유지) ── */
-    .restaurant-card { background: var(--color-bg-card); border-radius: 16px; box-shadow: var(--shadow-card); overflow: hidden; cursor: pointer; transition: transform .22s cubic-bezier(.2,.7,.2,1), box-shadow .22s; position: relative; will-change: transform; break-inside: avoid; -webkit-column-break-inside: avoid; margin: 0 0 20px; }
+    .restaurant-card { background: var(--color-bg-card); border-radius: 16px; box-shadow: var(--shadow-card); overflow: hidden; cursor: pointer; transition: transform .22s cubic-bezier(.2,.7,.2,1), box-shadow .22s; position: relative; break-inside: avoid; -webkit-column-break-inside: avoid; margin: 0 0 20px; }
     .restaurant-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-card-hover); }
     .restaurant-card:active { transform: scale(0.99); }
-    .card-img-wrap { position: relative; overflow: hidden; background: var(--color-bg-input); }
-    .card-img { width: 100%; height: auto; display: block; object-fit: cover; opacity: 0; transition: opacity .4s ease, transform .45s cubic-bezier(.2,.7,.2,1); }
-    .card-img.is-loaded { opacity: 1; }
-    .card-img.is-loaded + .card-img-placeholder { display: none; }   /* 이미지 로드되면 플레이스홀더 숨김 → 사진 원본 비율(masonry) */
+    .card-img-wrap { position: relative; overflow: hidden; background: var(--color-bg-input); aspect-ratio: 4 / 3; }
+    .card-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; transition: transform .45s cubic-bezier(.2,.7,.2,1); }
+    .card-img.is-loaded + .card-img-placeholder { display: none; }   /* 이미지 로드되면 플레이스홀더 숨김 */
     .restaurant-card:hover .card-img { transform: scale(1.04); }
-    .card-img-placeholder { width: 100%; min-height: 200px; display: flex; align-items: center; justify-content: center; font-size: 3rem; }
+    .card-img-placeholder { position: absolute; inset: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 3rem; }
     .card-closed-badge, .card-dayoff-badge, .card-break-badge { position: absolute; top: 10px; left: 10px; font-size: 0.6875rem; font-weight: 700; padding: 5px 10px; border-radius: 999px; color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
     .card-closed-badge  { background: rgba(0,0,0,0.55); }
     .card-dayoff-badge { background: rgba(99,60,180,0.82); }
@@ -138,10 +137,11 @@
     .review-quick-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
     .review-quick-tag { padding: 4px 11px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; background: var(--color-bg-card); border: 1px solid var(--color-border); color: var(--color-text-secondary); cursor: pointer; font-family: var(--font-main); transition: all .14s; }
     .review-quick-tag:hover { border-color: var(--color-primary); color: var(--color-primary); }
+    .review-quick-hint { font-size: 0.75rem; color: var(--color-text-tertiary); }
     .star-row { display: flex; gap: 2px; margin-bottom: 10px; }
-    .star-btn { background: none; border: none; cursor: pointer; font-size: 1.5rem; line-height: 1; color: var(--color-border); padding: 0; font-family: inherit; }
+    .star-btn { background: none; border: none; cursor: pointer; font-size: 1.5rem; line-height: 1; color: #c2c2c8; padding: 0; font-family: inherit; }
     .star-btn.on { color: #FFB23E; }
-    .star { color: var(--color-border); font-size: 0.875rem; }
+    .star { color: #c2c2c8; font-size: 0.875rem; }
     .star.on { color: #FFB23E; }
     .review-input { width: 100%; padding: 9px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-card); color: var(--color-text-primary); font-size: 0.875rem; font-family: var(--font-main); margin-bottom: 10px; }
     .review-form-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -156,6 +156,12 @@
     .review-name { font-size: 0.8125rem; font-weight: 600; }
     .review-stars { line-height: 1; }
     .review-text { font-size: 0.8125rem; color: var(--color-text-secondary); margin-top: 3px; line-height: 1.4; }
+
+
+    /* 다크모드: 빈 별 중간 회색 (채워진 별은 금색 유지) */
+    html[data-theme="dark"] .star-btn:not(.on),
+    html[data-theme="dark"] .star:not(.on),
+    html[data-theme="dark"] .feed-review-off { color:#6f6f74; }
 
   </style>
 </head>
@@ -482,7 +488,46 @@
 
       filteredMenus = menus;
       renderGrid();
+      preloadRatios(menus);
       document.getElementById("resultCount").textContent = `${filteredMenus.length}개 메뉴`;
+    }
+
+    // 배경에서 이미지 원본 비율을 미리 읽어 캐시 → 스크롤 시 자리 튐(지지직) 방지
+    // 보이는 이미지가 먼저 받도록: 낮은 우선순위 + 동시 4개 제한 + 유휴 시간에 시작
+    function preloadRatios(menus) {
+      const urls = [];
+      menus.forEach(m => {
+        if (!m.photo) return;
+        const u = getStorageUrl(m.photo);
+        if (!imgRatioCache[u] && !urls.includes(u)) urls.push(u);
+      });
+      let i = 0;
+      const CONC = 4;
+      function next() {
+        if (i >= urls.length) return;
+        const url = urls[i++];
+        const im = new Image();
+        try { im.fetchPriority = "low"; } catch (e) {}
+        const done = () => next();
+        im.onload = () => {
+          if (im.naturalWidth && im.naturalHeight) {
+            const ratio = `${im.naturalWidth} / ${im.naturalHeight}`;
+            imgRatioCache[url] = ratio;
+            document.querySelectorAll('#restaurantGrid .card-img').forEach(el => {
+              if (el.getAttribute('src') === url) {
+                const wrap = el.closest('.card-img-wrap');
+                if (wrap && !wrap.style.aspectRatio) wrap.style.aspectRatio = ratio;
+              }
+            });
+          }
+          done();
+        };
+        im.onerror = done;
+        im.src = url;
+      }
+      const start = () => { for (let k = 0; k < CONC; k++) next(); };
+      if (window.requestIdleCallback) requestIdleCallback(start, { timeout: 1500 });
+      else setTimeout(start, 400);
     }
 
     // ── 컬럼 수 (CSS 브레이크포인트와 일치) ──
@@ -494,17 +539,35 @@
       return 5;
     }
 
+    // 이미지 원본 비율 캐시 (url → "W/H") — 로드 전 자리 예약용
+    const imgRatioCache = {};
+
+    window.onCardImg = function(img) {
+      img.classList.add('is-loaded');
+      const w = img.naturalWidth, h = img.naturalHeight;
+      if (w && h) {
+        const ratio = `${w} / ${h}`;
+        imgRatioCache[img.getAttribute('src')] = ratio;
+        const wrap = img.closest('.card-img-wrap');
+        if (wrap) wrap.style.aspectRatio = ratio;
+      }
+    };
+
     // ── 카드 1장 HTML ──
-    function cardHtml(m) {
+    function cardHtml(m, i = 99) {
       const r       = m.restaurant;
       const status  = getOpenStatus(r);
       const liked   = userMenuLikes.includes(m.id);
       const regular = userRegulars.includes(r.id);
+      const url     = m.photo ? getStorageUrl(m.photo) : '';
+      const ratio   = url && imgRatioCache[url] ? imgRatioCache[url] : '';
+      const eager   = i < 10;   // 첫 두 줄 정도는 즉시·우선 로드
+      const imgAttr = eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="auto"';
       return `
         <div class="restaurant-card" onclick="openModal('${r.id}','${m.id}')">
-          <div class="card-img-wrap">
+          <div class="card-img-wrap"${ratio ? ` style="aspect-ratio:${ratio}"` : ''}>
             ${m.photo
-              ? `<img class="card-img" src="${getStorageUrl(m.photo)}" alt="${m.name}" loading="lazy" onload="this.classList.add('is-loaded')" onerror="this.remove()" /><div class="card-img-placeholder">${getCategoryEmoji(r.category)}</div>`
+              ? `<img class="card-img" src="${url}" alt="${m.name}" ${imgAttr} decoding="async" onload="onCardImg(this)" onerror="this.remove()" /><div class="card-img-placeholder">${getCategoryEmoji(r.category)}</div>`
               : `<div class="card-img-placeholder">${getCategoryEmoji(r.category)}</div>`}
             ${status === 'closed'  ? '<span class="card-closed-badge">영업종료</span>' : ''}
             ${status === 'dayoff' ? '<span class="card-dayoff-badge">휴무일</span>' : ''}
@@ -534,9 +597,9 @@
 
       grid.innerHTML = filteredMenus.map(cardHtml).join('');
 
-      // 캐시되어 이미 로드된 이미지는 onload가 안 뜰 수 있어 즉시 표시 보정
+      // 캐시되어 이미 로드된 이미지는 onload가 안 뜰 수 있어 즉시 보정
       grid.querySelectorAll('.card-img').forEach(img => {
-        if (img.complete && img.naturalWidth) img.classList.add('is-loaded');
+        if (img.complete && img.naturalWidth) onCardImg(img);
       });
     }
 
@@ -571,7 +634,7 @@
         showToast("좋아요 취소");
       } else {
         userMenuLikes.push(menuId);
-        await addMenuLike(currentUser.uid, menuId);
+        await addMenuLike(currentUser.uid, menuId, allMenus.find(m => m.id === menuId)?.restaurantId);
         if (heartEl) heartEl.innerHTML = ICONS.heartFill;
         showToast("좋아요!");
       }
@@ -687,6 +750,20 @@
     // ─── 리뷰 ───────────────────────────────
     let _myReviewDraft = { rating: 0 };
 
+    // 별점별 추천 태그 (1~5점 각기 다른 멘트)
+    const QUICK_TAGS_BY_RATING = {
+      5: ["완전 맛있어요","또 올 거예요","강력 추천","양이 푸짐해요","분위기 최고","친절해요","가성비 좋아요","인테리어 예뻐요","재료가 신선해요","데이트하기 좋아요"],
+      4: ["맛있어요","만족스러워요","가성비 좋아요","또 올 만해요","친절해요","양 적당해요","깔끔해요","혼밥하기 좋아요","분위기 좋아요","무난하게 좋아요"],
+      3: ["무난해요","평범해요","가격은 적당","나쁘지 않아요","그럭저럭이에요","기본은 해요","특별하진 않아요","다시 갈진 모르겠어요","가끔 생각나요","호불호 갈려요"],
+      2: ["좀 아쉬워요","기대보단 별로","가격대비 아쉬워요","양이 적어요","불친절해요","음식의 질이 아쉬워요","위생이 걱정돼요","웨이팅 길어요","시끄러워요","재방문 글쎄요"],
+      1: ["별로예요","비추천","맛이 아쉬워요","양이 적어요","서비스가 별로예요","위생이 아쉬워요","불친절해요","주차 어려워요","웨이팅 너무 길어요","가격이 비싸요"],
+    };
+    function quickTagsHtml(rating, onclickFor) {
+      const tags = QUICK_TAGS_BY_RATING[rating];
+      if (!tags) return `<span class="review-quick-hint">별점을 선택하면 추천 태그가 나와요</span>`;
+      return tags.map(t => `<button class="review-quick-tag" onclick="${onclickFor(t)}">${t}</button>`).join('');
+    }
+
     function starsHtml(rating, interactive) {
       let s = "";
       for (let i = 1; i <= 5; i++) {
@@ -724,12 +801,11 @@
       _myReviewDraft = { rating: mine?.rating || 0 };
       const visMap = { friends: "친구만", private: "나만" };
       const myVis = mine?.visibility || "friends";
-      const QUICK_TAGS = ["맛있어요","양이 푸짐해요","분위기가 좋아요","혼밥하기 좋아요","가격대비 아쉬워요","양이 적어요"];
       const formHtml = `
         <div class="review-form" id="reviewForm">
           <div class="review-form-title">${mine ? "내 리뷰 수정" : "리뷰 남기기"}</div>
           <div class="star-row" id="starRow">${starsHtml(_myReviewDraft.rating, true)}</div>
-          <div class="review-quick-tags">${QUICK_TAGS.map(t=>`<button class="review-quick-tag" onclick="appendReviewTag('${t}')">${t}</button>`).join('')}</div>
+          <div class="review-quick-tags" id="reviewQuickTags">${quickTagsHtml(_myReviewDraft.rating, t=>`appendReviewTag('${t}')`)}</div>
           <input id="reviewText" class="review-input" maxlength="100" placeholder="한 줄 평 (선택)" autocomplete="off" value="${(mine?.text||'').replace(/"/g,'&quot;')}" />
           <div class="review-form-bottom">
             <select id="reviewVis" class="review-vis">
@@ -766,6 +842,8 @@
       _myReviewDraft.rating = n;
       const row = document.getElementById("starRow");
       if (row) row.innerHTML = starsHtml(n, true);
+      const tagsEl = document.getElementById("reviewQuickTags");
+      if (tagsEl) tagsEl.innerHTML = quickTagsHtml(n, t=>`appendReviewTag('${t}')`);
     };
 
     window.appendReviewTag = function(tag) {

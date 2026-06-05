@@ -283,9 +283,14 @@ a {
   color: #2E7D32;
 }
 
-.badge-closed , .badge-dayoff {
+.badge-closed {
   background: #FFEBEE;
   color: #C62828;
+}
+
+.badge-dayoff {
+  background: #F3E8FF;
+  color: #7C3AED;
 }
 
 .badge-break {
@@ -488,6 +493,9 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
 }
 
 .menu-item-left { display: flex; align-items: center; gap: 12px; }
@@ -526,19 +534,15 @@ a {
 .menu-price { font-size: 0.875rem; font-weight: 600; color: var(--color-primary); flex-shrink: 0; }
 
 /* 클릭한 메뉴 강조 — 홈 피드에서 특정 메뉴 클릭 시 모달 상단에 고정 */
-.menu-name-wrap { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.menu-name-wrap { display: flex; flex-direction: row; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
 .menu-item--picked {
   background: var(--color-primary-light);
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-md);
-  padding: 10px;
-  margin: -2px 0 4px;
+  border-color: var(--color-primary);
 }
 .menu-pick-badge {
-  align-self: flex-start;
   font-size: 0.6875rem; font-weight: 700;
   color: #fff; background: var(--color-primary);
-  padding: 2px 8px; border-radius: 999px;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
 }
 
 /* ── SVG 아이콘 (이모지 대체) — 전 페이지 공용 ── */
