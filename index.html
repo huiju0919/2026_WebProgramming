@@ -75,15 +75,20 @@
     .sort-option:hover { background: var(--color-bg-input); }
     .sort-option.active { color: var(--color-primary); font-weight: 700; }
 
-    /* ── 마소너리 그리드 (CSS columns → 컬럼 높이 자동 균등, 바닥 정렬) ── */
+    /* ── 마소너리 그리드 ──
+       랜덤: CSS 다단(column-count) → 컬럼 높이 자동 균등(바닥이 고르게 정리되어 예쁨)
+       거리순(.row-major): flex 컬럼 + JS 라운드로빈 → 행 우선(윗줄 왼→오로 가까운 순) */
     .page-content { padding-bottom: 80px; }
     .restaurant-grid { column-count: 5; column-gap: 20px; max-width: var(--max-width); margin: 0 auto; padding: 0 32px; }
     @media (max-width: 1280px) { .restaurant-grid { column-count: 4; } }
     @media (max-width: 980px)  { .restaurant-grid { column-count: 3; } }
     @media (max-width: 700px)  { .restaurant-grid { column-count: 2; } }
+    .restaurant-grid.row-major { display: flex; gap: 20px; align-items: flex-start; }
+    .grid-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 
     /* ── 카드 (사진만, 원본 비율 유지) ── */
     .restaurant-card { background: var(--color-bg-card); border-radius: 16px; box-shadow: var(--shadow-card); overflow: hidden; cursor: pointer; transition: transform .22s cubic-bezier(.2,.7,.2,1), box-shadow .22s; position: relative; break-inside: avoid; -webkit-column-break-inside: avoid; margin: 0 0 20px; }
+    .restaurant-grid.row-major .restaurant-card { margin-bottom: 0; }   /* 거리순 flex 컬럼은 gap이 간격 담당 */
     .restaurant-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-card-hover); }
     .restaurant-card:active { transform: scale(0.99); }
     .card-img-wrap { position: relative; overflow: hidden; background: var(--color-bg-input); aspect-ratio: 4 / 3; }
@@ -113,7 +118,7 @@
     html[data-theme="dark"] .theme-fab .moon { display: block; }
 
     /* ── 맨 위로 버튼 ── */
-    .scroll-top-btn { position: fixed; bottom: 84px; right: 24px; width: 44px; height: 44px; border-radius: 50%; background: var(--color-primary); color: #fff; font-size: 1.125rem; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(244,80,46,0.45); opacity: 0; pointer-events: none; transform: translateY(16px); transition: opacity .2s, transform .2s; z-index: 60; }
+    .scroll-top-btn { position: fixed; bottom: 84px; right: 24px; width: 48px; height: 48px; border-radius: 50%; background: var(--color-primary); color: #fff; font-size: 1.125rem; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(244,80,46,0.45); opacity: 0; pointer-events: none; transform: translateY(16px); transition: opacity .2s, transform .2s; z-index: 60; }
     .scroll-top-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
     .reexplore-btn { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); display: inline-flex; align-items: center; gap: 7px; padding: 13px 22px; border-radius: 999px; background: var(--color-primary); color: #fff; font-family: var(--font-main); font-size: 0.9375rem; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 50%, transparent); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 70; }
     .reexplore-btn.visible { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
@@ -234,7 +239,7 @@
     <!-- 식당 그리드 -->
     <div class="page-content">
       <div class="restaurant-grid" id="restaurantGrid">
-        <div class="spinner-wrap" style="flex:1">
+        <div class="spinner-wrap" style="column-span:all">
           <div class="spinner"></div>
           <span>식당 불러오는 중...</span>
         </div>
@@ -582,11 +587,12 @@
     }
 
     // ── 그리드 렌더링 ──
-    // CSS columns가 카드들을 여러 컬럼에 자동 분배 + 높이 균등화 → 카드는 평평하게 출력
+    // 정렬 순서를 컬럼에 행 우선(라운드로빈)으로 분배 → 윗줄 왼→오로 읽으면 정렬 순서대로
     function renderGrid() {
       const grid = document.getElementById("restaurantGrid");
 
       if (filteredMenus.length === 0) {
+        grid.classList.remove("row-major");
         grid.innerHTML = `
           <div class="empty-state" style="column-span:all;width:100%">
             <div class="empty-state-icon">${ICONS.search}</div>
@@ -596,7 +602,19 @@
         return;
       }
 
-      grid.innerHTML = filteredMenus.map(cardHtml).join('');
+      if (currentSort === "distance") {
+        // 거리순: 행 우선(가로) 분배 — 카드 i → 컬럼 (i % 컬럼수)
+        // → 각 컬럼 맨 위가 0,1,2…번 = 윗줄을 왼→오로 읽으면 가까운 순
+        grid.classList.add("row-major");
+        const colCount = getColumnCount();
+        const cols = Array.from({ length: colCount }, () => []);
+        filteredMenus.forEach((m, i) => cols[i % colCount].push(cardHtml(m, i)));
+        grid.innerHTML = cols.map(c => `<div class="grid-col">${c.join('')}</div>`).join('');
+      } else {
+        // 랜덤: CSS 다단 — 컬럼 높이가 자동 균등화되어 바닥이 고르게 정리됨
+        grid.classList.remove("row-major");
+        grid.innerHTML = filteredMenus.map((m, i) => cardHtml(m, i)).join('');
+      }
 
       // 캐시되어 이미 로드된 이미지는 onload가 안 뜰 수 있어 즉시 보정
       grid.querySelectorAll('.card-img').forEach(img => {
@@ -620,6 +638,18 @@
       if (filteredMenus.length === 0) { toggleReexplore(false); return; }
       const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 60;
       toggleReexplore(nearBottom);
+    }, { passive: true });
+
+    // 거리순(flex 컬럼)일 때만: 화면 폭이 바뀌어 컬럼 수가 달라지면 재분배 (디바운스)
+    // (랜덤은 CSS 다단이라 브라우저가 알아서 컬럼 수를 조정함)
+    let _gridResizeTimer, _lastColCount = getColumnCount();
+    window.addEventListener("resize", () => {
+      if (currentSort !== "distance") return;
+      clearTimeout(_gridResizeTimer);
+      _gridResizeTimer = setTimeout(() => {
+        const c = getColumnCount();
+        if (c !== _lastColCount && filteredMenus.length) { _lastColCount = c; renderGrid(); }
+      }, 200);
     }, { passive: true });
 
     // ── 그리드 메뉴 하트 버튼 클릭 ──
