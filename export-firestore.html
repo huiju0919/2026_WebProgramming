@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>FOOD FIRST — Firestore 데이터 내보내기</title>
+<style>
+  body { font-family: -apple-system, system-ui, "Segoe UI", sans-serif; max-width: 720px; margin: 40px auto; padding: 0 24px; color: #2C2C2A; line-height: 1.6; }
+  h1 { color: #D85A30; margin-bottom: 8px; }
+  p.sub { color: #5F5E5A; margin-top: 0; }
+  .box { background: #FAECE7; padding: 18px 22px; border-radius: 12px; margin: 24px 0; }
+  .box ol { margin: 8px 0 0; padding-left: 22px; }
+  .box li { margin: 6px 0; }
+  label { display: block; font-weight: 500; margin: 24px 0 8px; }
+  input[type="text"] { width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid #D3D1C7; font-size: 15px; box-sizing: border-box; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  textarea { width: 100%; height: 200px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; padding: 14px; border-radius: 8px; border: 1px solid #D3D1C7; box-sizing: border-box; resize: vertical; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { background: #F1EFE8; padding: 6px 12px; border-radius: 16px; font-size: 13px; cursor: pointer; border: 1px solid transparent; }
+  .chip:hover { background: #FAECE7; border-color: #D85A30; }
+  button { background: #D85A30; color: white; border: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 14px; }
+  button:hover { background: #B84A20; }
+  button:disabled { background: #B4B2A9; cursor: not-allowed; }
+  .status { margin-top: 18px; padding: 14px 18px; border-radius: 8px; font-size: 14px; display: none; }
+  .status.info { background: #E6F1FB; color: #185FA5; display: block; }
+  .status.success { background: #E1F5EE; color: #0F6E56; display: block; }
+  .status.error { background: #FCEBEB; color: #A32D2D; display: block; }
+  code { background: #F1EFE8; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .note { font-size: 13px; color: #5F5E5A; margin-top: 24px; padding-top: 16px; border-top: 1px solid #D3D1C7; }
+</style>
+</head>
+<body>
+
+<h1>🔥 Firestore 데이터 내보내기</h1>
+<p class="sub">원하는 컬렉션을 JSON 파일로 다운로드합니다.</p>
+
+<div class="box">
+  <strong>사용 방법</strong>
+  <ol>
+    <li>본인 프로젝트의 <code>firebaseConfig</code>를 아래 칸에 붙여넣기</li>
+    <li>내보낼 <strong>컬렉션 이름</strong>을 입력하거나 칩에서 선택</li>
+    <li><strong>내보내기</strong> 버튼 클릭 → JSON 파일 자동 다운로드</li>
+  </ol>
+</div>
+
+<label for="config">firebaseConfig 붙여넣기</label>
+<textarea id="config" placeholder='const firebaseConfig = {
+  apiKey: "AIza...",
+  projectId: "food-first-gm",
+  ...
+};'></textarea>
+
+<label for="collName">내보낼 컬렉션 이름</label>
+<input type="text" id="collName" value="restaurants" />
+<div class="chips">
+  <span class="chip" data-name="restaurants">restaurants</span>
+  <span class="chip" data-name="menus">menus</span>
+  <span class="chip" data-name="reviews">reviews</span>
+  <span class="chip" data-name="tasteProfiles">tasteProfiles</span>
+  <span class="chip" data-name="users">users</span>
+  <span class="chip" data-name="activities">activities</span>
+  <span class="chip" data-name="blockedMenus">blockedMenus</span>
+</div>
+
+<button id="exportBtn">내보내기 →</button>
+
+<div id="status" class="status"></div>
+
+<p class="note">
+  ℹ️ <code>firebaseConfig</code>는 공개돼도 안전합니다. 실제 보안은 Firestore 규칙에서 담당해요.
+  "permission-denied" 에러가 뜨면 해당 컬렉션의 read 권한을 잠시 풀어주시고, 작업 후 원복하세요.
+</p>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const btn = document.getElementById('exportBtn');
+  const status = document.getElementById('status');
+  const configBox = document.getElementById('config');
+  const collInput = document.getElementById('collName');
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => { collInput.value = chip.dataset.name; });
+  });
+
+  function setStatus(type, msg) {
+    status.className = 'status ' + type;
+    status.textContent = msg;
+  }
+
+  btn.addEventListener('click', async () => {
+    const raw = configBox.value.trim();
+    const collName = collInput.value.trim();
+
+    if (!raw) {
+      setStatus('error', '⚠️ firebaseConfig를 먼저 붙여넣어 주세요.');
+      return;
+    }
+    if (!collName) {
+      setStatus('error', '⚠️ 컬렉션 이름을 입력해주세요.');
+      return;
+    }
+
+    let cfg;
+    try {
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('객체 { } 부분을 찾을 수 없어요');
+      cfg = Function('"use strict"; return (' + match[0] + ')')();
+      if (!cfg || !cfg.projectId) throw new Error('projectId가 보이지 않아요');
+    } catch (e) {
+      setStatus('error', '⚠️ config 형식이 올바르지 않아요: ' + e.message);
+      return;
+    }
+
+    btn.disabled = true;
+    setStatus('info', `⏳ Firestore에서 ${collName} 컬렉션 읽는 중...`);
+
+    try {
+      const app = initializeApp(cfg);
+      const db = getFirestore(app);
+      const snap = await getDocs(collection(db, collName));
+
+      const items = [];
+      snap.forEach(d => items.push({ docId: d.id, ...d.data() }));
+      items.sort((a, b) => (a.id || a.docId || '').localeCompare(b.id || b.docId || ''));
+
+      const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${collName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      setStatus('success', `✅ 완료! ${items.length}개 문서를 ${collName}.json으로 내려받았어요. Claude에게 업로드하세요.`);
+    } catch (e) {
+      let hint = '';
+      if (e.code === 'permission-denied') hint = ` (보안 규칙에서 ${collName} 읽기 권한을 잠시 허용해야 해요)`;
+      setStatus('error', '❌ 에러: ' + e.message + hint);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
