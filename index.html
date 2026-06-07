@@ -100,7 +100,8 @@
     .card-closed-badge  { background: rgba(0,0,0,0.55); }
     .card-dayoff-badge { background: rgba(99,60,180,0.82); }
     .card-break-badge   { background: rgba(230,81,0,0.88); }
-    .card-heart { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 999px; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; font-size: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; transition: transform .15s; }
+    .card-heart { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border: none; padding: 0; border-radius: 999px; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; font-size: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; transition: transform .15s; }
+    .card-heart:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
     .card-heart:hover { transform: scale(1.08); }
     .card-heart:active { transform: scale(0.85); }
 
@@ -118,7 +119,7 @@
     html[data-theme="dark"] .theme-fab .moon { display: block; }
 
     /* ── 맨 위로 버튼 ── */
-    .scroll-top-btn { position: fixed; bottom: 84px; right: 24px; width: 48px; height: 48px; border-radius: 50%; background: var(--color-primary); color: #fff; font-size: 1.125rem; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(244,80,46,0.45); opacity: 0; pointer-events: none; transform: translateY(16px); transition: opacity .2s, transform .2s; z-index: 60; }
+    .scroll-top-btn { position: fixed; bottom: 84px; right: 24px; width: 48px; height: 48px; border-radius: 50%; background: var(--color-primary); color: #fff; font-size: 1.125rem; font-weight: 700; border: none; cursor: pointer; box-shadow: var(--shadow-btn); opacity: 0; pointer-events: none; transform: translateY(16px); transition: opacity .2s, transform .2s; z-index: 60; }
     .scroll-top-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
     .reexplore-btn { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); display: inline-flex; align-items: center; gap: 7px; padding: 13px 22px; border-radius: 999px; background: var(--color-primary); color: #fff; font-family: var(--font-main); font-size: 0.9375rem; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 50%, transparent); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 70; }
     .reexplore-btn.visible { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
@@ -579,9 +580,10 @@
             ${status === 'dayoff' ? '<span class="card-dayoff-badge">휴무일</span>' : ''}
             ${status === 'break'   ? '<span class="card-break-badge">브레이크타임</span>' : ''}
             ${regular ? '<span class="card-closed-badge" style="background:rgba(255,150,0,0.9);left:10px;bottom:10px;top:auto">' + ICONS.bookmark + ' 단골</span>' : ''}
-            <div class="card-heart" onclick="handleMenuHeart(event,'${m.id}')" id="menu-heart-${m.id}">
+            <button type="button" class="card-heart" onclick="handleMenuHeart(event,'${m.id}')" id="menu-heart-${m.id}"
+                    aria-label="좋아요" aria-pressed="${liked}">
               ${liked ? ICONS.heartFill : ICONS.heart}
-            </div>
+            </button>
           </div>
         </div>`;
     }
@@ -661,12 +663,12 @@
       if (liked) {
         userMenuLikes = userMenuLikes.filter(id => id !== menuId);
         await removeMenuLike(currentUser.uid, menuId);
-        if (heartEl) heartEl.innerHTML = ICONS.heart;
+        if (heartEl) { heartEl.innerHTML = ICONS.heart; heartEl.setAttribute('aria-pressed', 'false'); }
         showToast("좋아요 취소");
       } else {
         userMenuLikes.push(menuId);
         await addMenuLike(currentUser.uid, menuId, allMenus.find(m => m.id === menuId)?.restaurantId);
-        if (heartEl) heartEl.innerHTML = ICONS.heartFill;
+        if (heartEl) { heartEl.innerHTML = ICONS.heartFill; heartEl.setAttribute('aria-pressed', 'true'); }
         showToast("좋아요!");
       }
       // 모달이 열려있으면 메뉴 리스트 하트도 갱신

@@ -38,7 +38,7 @@
       width: 48px; height: 48px; border-radius: 50%;
       background: var(--color-primary); color: #fff;
       font-size: 1.125rem; font-weight: 700; border: none; cursor: pointer;
-      box-shadow: 0 4px 16px rgba(244,113,86,0.45);
+      box-shadow: var(--shadow-btn);
       opacity: 0; pointer-events: none;
       transition: opacity 0.2s, transform 0.2s; z-index: 150;
       transform: translateY(16px);
@@ -319,7 +319,7 @@
     .feed-time { font-size:0.6875rem; color:var(--color-text-tertiary); margin-top:3px; }
     .myrev-stars { flex-shrink:0; font-size:0.9375rem; color:#FFB23E; }
     .myrev-vis { font-size:0.6875rem; color:var(--color-text-tertiary); background:var(--color-bg-input); padding:1px 7px; border-radius:999px; margin-left:4px; }
-    .myrev-card { display:flex; gap:10px; padding:10px 0; border-top:1px solid var(--color-border-light); cursor:pointer; border-radius:var(--radius-md); transition:background .12s; }
+    .myrev-card { display:flex; gap:10px; padding:10px 12px; border-top:1px solid var(--color-border-light); cursor:pointer; border-radius:var(--radius-md); transition:background .12s; }
     .myrev-card:first-child { border-top:none; }
     .myrev-card:hover { background:var(--color-bg-input); }
     .myrev-thumb { width:56px; height:56px; flex-shrink:0; border-radius:var(--radius-md); background:var(--color-bg-input); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:1.5rem; position:relative; }
@@ -937,6 +937,7 @@
            } from "./firebase.js";
     import { onAuthChanged, logout } from "./auth.js";
     import { ICONS, applyIcons } from "./icons.js";
+    import { escapeHtml } from "./escape.js";
     applyIcons();
 
     // ── 대표색(Accent) ──
@@ -953,11 +954,7 @@
     let blockedMenus       = [];
     let currentViewallType = null;
 
-    function escapeHtml(str) {
-      return String(str ?? "").replace(/[&<>"']/g, (c) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-      }[c]));
-    }
+    // escapeHtml은 escape.js에서 import (중복 정의 제거)
 
     onAuthChanged(async (user) => {
       currentUser    = user;
@@ -1338,7 +1335,7 @@
           const selected = selectedIds.has(rv.restaurantId);
           if (isSelectMode) {
             const r = allRestaurants.find(x => x.id === rv.restaurantId);
-            const name = r ? _frEsc(r.name) : "(삭제된 식당)";
+            const name = r ? escapeHtml(r.name) : "(삭제된 식당)";
             const menuWithPhoto = allMenus.find(m => String(m.restaurantId) === String(rv.restaurantId) && m.photo);
             const emoji = catEmoji[r?.category] || '🍽️';
             const thumbHtml = menuWithPhoto
@@ -1354,7 +1351,7 @@
                     <span class="myrev-stars">${"★".repeat(rv.rating||0)}<span class="feed-review-off">${"★".repeat(5-(rv.rating||0))}</span></span>
                   </div>
                   <div class="feed-line"><b>${name}</b></div>
-                  ${rv.text ? `<div class="feed-review" style="color:var(--color-text-secondary)">${_frEsc(rv.text)}</div>` : ""}
+                  ${rv.text ? `<div class="feed-review" style="color:var(--color-text-secondary)">${escapeHtml(rv.text)}</div>` : ""}
                 </div>
               </div>`;
           }
@@ -1834,11 +1831,10 @@
     };
 
     // ── 친구 기능 ──
-    function _frEsc(s){ return String(s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
     function _frAva(u){
       if (u.photoBase64) return `<div class="fr-ava"><img src="${u.photoBase64}" alt=""></div>`;
       const ini = (String(u.displayName || u.email || "?").trim().charAt(0) || "?").toUpperCase();
-      return `<div class="fr-ava">${_frEsc(ini)}</div>`;
+      return `<div class="fr-ava">${escapeHtml(ini)}</div>`;
     }
 
     window.closeFriends = function(){
@@ -1872,7 +1868,7 @@
         html += recv.map(u => `
           <div class="fr-item">
             ${_frAva(u)}
-            <div class="fr-meta"><div class="fr-name">${_frEsc(u.displayName||"이름 없음")}</div><div class="fr-mail">${_frEsc(u.email)}</div></div>
+            <div class="fr-meta"><div class="fr-name">${escapeHtml(u.displayName||"이름 없음")}</div><div class="fr-mail">${escapeHtml(u.email)}</div></div>
             <div class="fr-btns">
               <button class="fr-btn accept" onclick="frAccept('${u.uid}')">수락</button>
               <button class="fr-btn reject" onclick="frReject('${u.uid}')">거절</button>
@@ -1886,7 +1882,7 @@
           <div class="fr-item">
             <div class="fr-click" onclick="frToggleTaste('${u.uid}')">
               ${_frAva(u)}
-              <div class="fr-meta"><div class="fr-name">${_frEsc(u.displayName||"이름 없음")}</div><div class="fr-mail">${_frEsc(u.email)}</div></div>
+              <div class="fr-meta"><div class="fr-name">${escapeHtml(u.displayName||"이름 없음")}</div><div class="fr-mail">${escapeHtml(u.email)}</div></div>
             </div>
             <div class="fr-btns">
               <button class="fr-btn del" onclick="frRemove('${u.uid}')">삭제</button>
@@ -1900,7 +1896,7 @@
         html += sent.map(u => `
           <div class="fr-item">
             ${_frAva(u)}
-            <div class="fr-meta"><div class="fr-name">${_frEsc(u.displayName||"이름 없음")}</div><div class="fr-mail">${_frEsc(u.email)}</div></div>
+            <div class="fr-meta"><div class="fr-name">${escapeHtml(u.displayName||"이름 없음")}</div><div class="fr-mail">${escapeHtml(u.email)}</div></div>
             <div class="fr-btns"><button class="fr-btn cancel" onclick="frCancel('${u.uid}')">취소</button></div>
           </div>`).join("");
       }
@@ -1965,10 +1961,10 @@
             <div class="review-ava">${r.photoBase64 ? `<img src="${r.photoBase64}" alt="">` : (r.displayName||'?').charAt(0).toUpperCase()}</div>
             <div class="review-body">
               <div class="review-top">
-                <span class="review-name">${_frEsc(r.displayName||'익명')}</span>
+                <span class="review-name">${escapeHtml(r.displayName||'익명')}</span>
                 <span class="review-stars">${_starsHtml(r.rating, false)}</span>
               </div>
-              ${r.text ? `<div class="review-text">${_frEsc(r.text)}</div>` : ``}
+              ${r.text ? `<div class="review-text">${escapeHtml(r.text)}</div>` : ``}
             </div>
           </div>`).join("")
         : `<div class="review-empty">아직 다른 리뷰가 없어요</div>`;
@@ -2079,13 +2075,13 @@
           ? `<img src="${f.photoBase64}" alt="">`
           : (f.displayName || "?").charAt(0).toUpperCase();
         const extra = a.type === "review"
-          ? `<div class="feed-review">${"★".repeat(a.rating||0)}<span class="feed-review-off">${"★".repeat(5-(a.rating||0))}</span>${a.text ? ` · ${_frEsc(a.text)}` : ""}</div>`
+          ? `<div class="feed-review">${"★".repeat(a.rating||0)}<span class="feed-review-off">${"★".repeat(5-(a.rating||0))}</span>${a.text ? ` · ${escapeHtml(a.text)}` : ""}</div>`
           : "";
         return `
           <div class="feed-item" onclick="openModal('${r.id}')">
             <div class="feed-ava">${ava}</div>
             <div class="feed-body">
-              <div class="feed-line"><b>${_frEsc(f.displayName||"친구")}</b>님이 <b>${_frEsc(r.name)}</b>을(를) ${FEED_VERB[a.type]||"활동했어요"} ${FEED_ICON[a.type]||""}</div>
+              <div class="feed-line"><b>${escapeHtml(f.displayName||"친구")}</b>님이 <b>${escapeHtml(r.name)}</b>을(를) ${FEED_VERB[a.type]||"활동했어요"} ${FEED_ICON[a.type]||""}</div>
               ${extra}
               <div class="feed-time">${_timeAgo(a.ts)}</div>
             </div>
@@ -2114,7 +2110,7 @@
 
     function _buildReviewCard(rv) {
       const r = allRestaurants.find(x => x.id === rv.restaurantId);
-      const name = r ? _frEsc(r.name) : "(삭제된 식당)";
+      const name = r ? escapeHtml(r.name) : "(삭제된 식당)";
       const visMap = { friends: "친구만", private: "나만" };
       // 사진: 식당에 연결된 메뉴 중 첫 번째 사진 (scroll-card와 동일 방식)
       const menuWithPhoto = allMenus.find(m => String(m.restaurantId) === String(rv.restaurantId) && m.photo);
@@ -2132,7 +2128,7 @@
               <span class="myrev-vis">${visMap[rv.visibility]||"친구만"}</span>
             </div>
             <div class="feed-line"><b>${name}</b></div>
-            ${rv.text ? `<div class="feed-review" style="color:var(--color-text-secondary)">${_frEsc(rv.text)}</div>` : ""}
+            ${rv.text ? `<div class="feed-review" style="color:var(--color-text-secondary)">${escapeHtml(rv.text)}</div>` : ""}
             <div class="feed-time">${_timeAgo(rv.ts)}</div>
             <div class="myrev-edit-form" id="myrev-edit-${rv.restaurantId}" style="display:none">
               <div class="star-row" id="myrev-star-${rv.restaurantId}">${_starsHtml(rv.rating, true, rv.restaurantId)}</div>
@@ -2322,7 +2318,7 @@
         } else {
           box.innerHTML = top3.map(([tag,v]) => {
             const pct = total ? Math.round(v/total*100) : 0;
-            return `<div class="fr-taste-chip"><span class="fr-taste-tag">${_frEsc(tag)}</span><span class="fr-taste-pct">${pct}%</span></div>`;
+            return `<div class="fr-taste-chip"><span class="fr-taste-tag">${escapeHtml(tag)}</span><span class="fr-taste-pct">${pct}%</span></div>`;
           }).join("");
         }
         box.dataset.loaded = "1";
@@ -2357,8 +2353,8 @@
           : emoji;
         return `<div class="fr-rest" onclick="closeFriends(); openModal('${r.id}')">
             <span class="fr-rest-thumb">${thumb}</span>
-            <span class="fr-rest-name">${_frEsc(r.name)}</span>
-            <span class="fr-rest-cat">${_frEsc(r.category||"")}</span>
+            <span class="fr-rest-name">${escapeHtml(r.name)}</span>
+            <span class="fr-rest-cat">${escapeHtml(r.category||"")}</span>
           </div>`;
       };
 
@@ -2386,7 +2382,7 @@
         tasteInner = entries.map(([tag, score]) => {
           const pct = Math.round((score/total)*100);
           return `<div class="fr-taste">
-              <div class="fr-taste-top"><span>${_frEsc(tag)}</span><span class="fr-taste-pct">${pct}%</span></div>
+              <div class="fr-taste-top"><span>${escapeHtml(tag)}</span><span class="fr-taste-pct">${pct}%</span></div>
               <div class="fr-taste-bar"><div style="width:${pct}%"></div></div>
             </div>`;
         }).join("");

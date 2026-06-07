@@ -6,6 +6,7 @@ import {
   loadRestaurantData, getUserSettings, updateUserSettings, pushNotification,
 } from "./firebase.js";
 import { onAuthChanged } from "./auth.js";
+import { escapeHtml } from "./escape.js";
 
 const BELL_SVG = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`;
 
@@ -21,7 +22,6 @@ let _firstRender = true;          // 첫 로드엔 토스트 안 띄움(기존 �
 let _toastQueue = [];
 let _toastShowing = false;
 
-function _esc(s){ return String(s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function _today(){ const d = new Date(); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
 
 // 테마/폰트 FAB가 계정(Firebase)에도 저장하도록 노출 (로그인 상태에서만)
@@ -196,7 +196,7 @@ function _showNextToast() {
   const host = _ensureToastHost();
   const el = document.createElement("div");
   el.className = "notif-toast";
-  el.innerHTML = `<span class="notif-toast-ic">${icon}</span><span class="notif-toast-text">${_esc(text)}</span>`;
+  el.innerHTML = `<span class="notif-toast-ic">${icon}</span><span class="notif-toast-text">${escapeHtml(text)}</span>`;
   el.onclick = () => {
     if (href) location.href = href;
     else openPanel();
@@ -267,9 +267,9 @@ async function render(displayName) {
   // 1) 받은 친구 요청 (수락/거절)
   if (reqs.length) {
     html += reqs.map(u2 => `
-      <div class="notif-item" id="notif-fr-${u2.uid}" data-name="${_esc(u2.displayName||"이름 없음")}">
-        <div class="notif-ic notif-ic-fr">${_esc((u2.displayName||u2.email||"?").charAt(0).toUpperCase())}</div>
-        <div class="notif-text"><b>${_esc(u2.displayName||"이름 없음")}</b>님이 친구 요청을 보냈어요</div>
+      <div class="notif-item" id="notif-fr-${u2.uid}" data-name="${escapeHtml(u2.displayName||"이름 없음")}">
+        <div class="notif-ic notif-ic-fr">${escapeHtml((u2.displayName||u2.email||"?").charAt(0).toUpperCase())}</div>
+        <div class="notif-text"><b>${escapeHtml(u2.displayName||"이름 없음")}</b>님이 친구 요청을 보냈어요</div>
         <div class="notif-acts">
           <button class="notif-btn accept" onclick="event.stopPropagation();__notifAccept('${u2.uid}')">수락</button>
           <button class="notif-btn reject" onclick="event.stopPropagation();__notifReject('${u2.uid}')">거절</button>
@@ -287,8 +287,8 @@ async function render(displayName) {
         : "";
       return `
       <div class="notif-item notif-done" ${click}>
-        <div class="notif-ic ${isAi ? "notif-ic-ai" : "notif-ic-fr"}" style="${isAi?"":"opacity:.7"}">${_esc(icon)}</div>
-        <div class="notif-text">${_esc(n.text)}</div>
+        <div class="notif-ic ${isAi ? "notif-ic-ai" : "notif-ic-fr"}" style="${isAi?"":"opacity:.7"}">${escapeHtml(icon)}</div>
+        <div class="notif-text">${escapeHtml(n.text)}</div>
       </div>`;
     }).join("");
   }

@@ -76,12 +76,20 @@
       position: relative;
       width: 48px;
       height: 28px;
-      background: #ccc;
+      background: #c4c0b8;
       border-radius: 14px;
       cursor: pointer;
       transition: background 0.3s;
       border: none;
       padding: 0;
+    }
+    .toggle-switch:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+    /* 다크모드: 꺼짐 상태 트랙을 어둡게 → 흰 손잡이 대비 확보 */
+    html[data-theme="dark"] .toggle-switch {
+      background: #4d453c;
     }
 
     .toggle-switch.active {
@@ -214,6 +222,20 @@
     .theme-fab .moon { display: none; }
     html[data-theme="dark"] .theme-fab .sun { display: none; }
     html[data-theme="dark"] .theme-fab .moon { display: block; }
+
+    /* ── 확인 다이얼로그 (confirm 대체, 접근성) ── */
+    .confirm-overlay { position: fixed; inset: 0; z-index: 500; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); opacity: 0; transition: opacity .18s; padding: 20px; }
+    .confirm-overlay.show { opacity: 1; }
+    .confirm-box { background: var(--color-bg-card); border-radius: var(--radius-lg); padding: 24px; max-width: 360px; width: 100%; box-shadow: var(--shadow-modal); transform: scale(.96); transition: transform .18s; }
+    .confirm-overlay.show .confirm-box { transform: scale(1); }
+    .confirm-title { font-size: 17px; font-weight: 700; margin: 0 0 8px; color: var(--color-text-primary); }
+    .confirm-msg { font-size: 14px; color: var(--color-text-secondary); line-height: 1.6; margin: 0 0 20px; white-space: pre-line; }
+    .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .confirm-actions button { padding: 10px 18px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font-main); border: none; }
+    .confirm-cancel { background: var(--color-bg-input); color: var(--color-text-primary); }
+    .confirm-ok { background: var(--color-primary); color: #fff; }
+    .confirm-ok.danger { background: var(--color-danger); }
+    .confirm-actions button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
   </style>
 </head>
 <body>
@@ -352,7 +374,8 @@
               <div class="settings-item-desc">친구 요청·추천 등 앱 알림 표시</div>
             </div>
             <button class="toggle-switch ${currentSettings.toastNotification !== false ? 'active' : ''}"
-                    id="toggleToastNotification"
+                    id="toggleToastNotification" role="switch"
+                    aria-checked="${currentSettings.toastNotification !== false}" aria-label="토스트 알림"
                     onclick="toggleSetting('toastNotification')"></button>
           </div>
         </div>
@@ -367,7 +390,8 @@
               <div class="settings-item-desc">다른 사용자가 내 프로필을 볼 수 있음</div>
             </div>
             <button class="toggle-switch ${!currentSettings.privateProfile ? 'active' : ''}"
-                    id="togglePrivate"
+                    id="togglePrivate" role="switch"
+                    aria-checked="${!currentSettings.privateProfile}" aria-label="프로필 공개"
                     onclick="toggleSetting('privateProfile', true)"></button>
           </div>
 
@@ -377,7 +401,8 @@
               <div class="settings-item-desc">친구 활동 피드에 내 좋아요 표시</div>
             </div>
             <button class="toggle-switch ${currentSettings.shareLikes !== false ? 'active' : ''}"
-                    id="toggleShareLikes"
+                    id="toggleShareLikes" role="switch"
+                    aria-checked="${currentSettings.shareLikes !== false}" aria-label="좋아요 공개"
                     onclick="toggleSetting('shareLikes')"></button>
           </div>
 
@@ -387,7 +412,8 @@
               <div class="settings-item-desc">친구 활동 피드에 내 단골 표시</div>
             </div>
             <button class="toggle-switch ${currentSettings.shareRegulars !== false ? 'active' : ''}"
-                    id="toggleShareRegulars"
+                    id="toggleShareRegulars" role="switch"
+                    aria-checked="${currentSettings.shareRegulars !== false}" aria-label="단골 공개"
                     onclick="toggleSetting('shareRegulars')"></button>
           </div>
 
@@ -397,7 +423,8 @@
               <div class="settings-item-desc">친구 활동 피드에 내 리뷰 표시</div>
             </div>
             <button class="toggle-switch ${currentSettings.shareReviews !== false ? 'active' : ''}"
-                    id="toggleShareReviews"
+                    id="toggleShareReviews" role="switch"
+                    aria-checked="${currentSettings.shareReviews !== false}" aria-label="리뷰 공개"
                     onclick="toggleSetting('shareReviews')"></button>
           </div>
 
@@ -407,7 +434,8 @@
               <div class="settings-item-desc">특별 할인 및 이벤트 정보</div>
             </div>
             <button class="toggle-switch ${currentSettings.marketingEmail ? 'active' : ''}"
-                    id="toggleMarketing"
+                    id="toggleMarketing" role="switch"
+                    aria-checked="${!!currentSettings.marketingEmail}" aria-label="마케팅 정보 수신"
                     onclick="toggleSetting('marketingEmail')"></button>
           </div>
         </div>
@@ -454,7 +482,7 @@
     };
 
     window.unlinkAccount = async function(email) {
-      if (!confirm(`정말 ${email}의 연동을 해제하시겠어요?`)) return;
+      if (!await confirmDialog(`${email} 계정의 연동을 해제할까요?`, { title: "계정 연동 해제", confirmText: "해제", danger: true })) return;
       try {
         await unlinkGoogleAccount();
         showToast("계정 연동이 해제되었습니다");
@@ -480,12 +508,22 @@
         shareReviews:      'toggleShareReviews',
       };
       const btn = document.getElementById(idMap[key]);
+      const on = key === 'privateProfile' ? !newValue : newValue;   // 스위치 표시 상태(켜짐=on)
       if (btn) {
-        btn.classList.toggle('active', key === 'privateProfile' ? !newValue : newValue);
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-checked', String(on));   // 스크린리더에 상태 반영
       }
 
-      await updateUserSettings(currentUser.uid, currentSettings);
-      showToast("설정이 저장되었습니다");
+      try {
+        await updateUserSettings(currentUser.uid, currentSettings);
+        showToast("설정이 저장되었습니다");
+      } catch (error) {
+        // 저장 실패 시 UI·상태 원복 (낙관적 업데이트 롤백)
+        console.error(error);
+        currentSettings[key] = !newValue;
+        if (btn) { btn.classList.toggle('active', !on); btn.setAttribute('aria-checked', String(!on)); }
+        showToast("설정 저장 실패: " + error.message);
+      }
     };
 
     // 설정은 토글할 때마다 자동 저장되므로, 확인 후 이전 화면으로 복귀
@@ -499,8 +537,8 @@
 
     window.handleDeleteAccount = async function() {
       if (!currentUser) return;
-      if (!confirm('정말 계정을 삭제하시겠어요?\n\n이 작업은 되돌릴 수 없습니다.\n모든 데이터가 삭제됩니다.')) return;
-      if (!confirm('한 번 더 확인합니다. 정말 삭제하시겠어요?')) return;
+      if (!await confirmDialog('이 작업은 되돌릴 수 없으며, 모든 데이터가 삭제됩니다.', { title: "정말 계정을 삭제할까요?", confirmText: "삭제", danger: true })) return;
+      if (!await confirmDialog('마지막 확인입니다. 정말 삭제할까요?', { title: "계정 삭제", confirmText: "삭제", danger: true })) return;
 
       try {
         await deleteAccount();
@@ -511,6 +549,53 @@
         showToast("계정 삭제 실패: " + error.message);
       }
     };
+
+    // 접근성 있는 확인 다이얼로그 (브라우저 기본 confirm 대체) → Promise<boolean>
+    // role=dialog/aria-modal, ESC·배경클릭=취소, Tab 포커스 트랩, 위험 작업은 취소에 포커스
+    function confirmDialog(message, { title = "확인", confirmText = "확인", cancelText = "취소", danger = false } = {}) {
+      return new Promise((resolve) => {
+        const prev = document.activeElement;
+        const overlay = document.createElement("div");
+        overlay.className = "confirm-overlay";
+        overlay.innerHTML = `
+          <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="cfTitle" aria-describedby="cfMsg">
+            <h2 class="confirm-title" id="cfTitle"></h2>
+            <p class="confirm-msg" id="cfMsg"></p>
+            <div class="confirm-actions">
+              <button type="button" class="confirm-cancel"></button>
+              <button type="button" class="confirm-ok${danger ? ' danger' : ''}"></button>
+            </div>
+          </div>`;
+        overlay.querySelector("#cfTitle").textContent = title;
+        overlay.querySelector("#cfMsg").textContent   = message;   // textContent → 안전(이스케이프)
+        const cancelBtn = overlay.querySelector(".confirm-cancel");
+        const okBtn     = overlay.querySelector(".confirm-ok");
+        cancelBtn.textContent = cancelText;
+        okBtn.textContent     = confirmText;
+        document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.classList.add("show"));
+
+        const close = (result) => {
+          document.removeEventListener("keydown", onKey);
+          overlay.classList.remove("show");
+          setTimeout(() => overlay.remove(), 180);
+          if (prev && prev.focus) prev.focus();
+          resolve(result);
+        };
+        const onKey = (e) => {
+          if (e.key === "Escape") { e.preventDefault(); close(false); }
+          else if (e.key === "Tab") {   // 포커스 트랩 (취소 ↔ 확인)
+            e.preventDefault();
+            (document.activeElement === okBtn ? cancelBtn : okBtn).focus();
+          }
+        };
+        cancelBtn.addEventListener("click", () => close(false));
+        okBtn.addEventListener("click", () => close(true));
+        overlay.addEventListener("click", (e) => { if (e.target === overlay) close(false); });
+        document.addEventListener("keydown", onKey);
+        (danger ? cancelBtn : okBtn).focus();   // 위험 작업은 기본 포커스를 '취소'에
+      });
+    }
 
     function showToast(message) {
       const toast = document.getElementById("toast");
