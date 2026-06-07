@@ -263,6 +263,7 @@
 
   <script type="module">
     import { getUserSettings, updateUserSettings, updateNavAvatar, getUserDoc } from "./firebase.js";
+    import { escapeHtml } from "./escape.js";
     import { onAuthChanged, deleteAccount, linkGoogleAccount, unlinkGoogleAccount } from "./auth.js";
     import { applyIcons } from "./icons.js";
     applyIcons();
@@ -311,7 +312,7 @@
               <div class="account-info">
                 <div class="account-icon" data-icon="user"></div>
                 <div class="account-details">
-                  <div class="account-email">${currentUser.email}</div>
+                  <div class="account-email">${escapeHtml(currentUser.email)}</div>
                   <div class="account-date">현재 로그인 중</div>
                 </div>
               </div>
@@ -326,7 +327,7 @@
                       <div class="account-info">
                         <div class="account-icon" data-icon="link"></div>
                         <div class="account-details">
-                          <div class="account-email">${provider.email}</div>
+                          <div class="account-email">${escapeHtml(provider.email)}</div>
                           <div class="account-date">연동된 계정</div>
                         </div>
                       </div>

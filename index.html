@@ -206,7 +206,7 @@
       <button class="taste-tab" data-taste="매콤한">매콤한</button>
       <button class="taste-tab" data-taste="국물/탕">국물</button>
       <button class="taste-tab" data-taste="바삭한">바삭한</button>
-      <button class="taste-tab" data-taste="담백한">담백한</button>
+      <button class="taste-tab" data-taste="감칠맛">감칠맛</button>
       <button class="taste-tab" data-taste="단짠">단짠</button>
       <button class="taste-tab" data-taste="달콤한">달콤한</button>
     </div>
@@ -336,6 +336,7 @@
     } from "./firebase.js";
     import { onAuthChanged } from "./auth.js";
     import { ICONS, applyIcons } from "./icons.js";
+    import { escapeHtml, safeImageSrc } from "./escape.js";
     applyIcons();   // 정적 마크업의 data-icon 요소에 SVG 주입
 
     // ── 토스트 메시지 ──
@@ -587,7 +588,7 @@
 
       if (filteredMenus.length === 0) {
         grid.innerHTML = `
-          <div class="empty-state" style="width:100%">
+          <div class="empty-state" style="column-span:all;width:100%">
             <div class="empty-state-icon">${ICONS.search}</div>
             <div class="empty-state-text">해당 카테고리 메뉴가 없습니다</div>
           </div>`;
@@ -806,7 +807,7 @@
           <div class="review-form-title">${mine ? "내 리뷰 수정" : "리뷰 남기기"}</div>
           <div class="star-row" id="starRow">${starsHtml(_myReviewDraft.rating, true)}</div>
           <div class="review-quick-tags" id="reviewQuickTags">${quickTagsHtml(_myReviewDraft.rating, t=>`appendReviewTag('${t}')`)}</div>
-          <input id="reviewText" class="review-input" maxlength="100" placeholder="한 줄 평 (선택)" autocomplete="off" value="${(mine?.text||'').replace(/"/g,'&quot;')}" />
+          <input id="reviewText" class="review-input" maxlength="100" placeholder="한 줄 평 (선택)" autocomplete="off" value="${escapeHtml(mine?.text||'')}" />
           <div class="review-form-bottom">
             <select id="reviewVis" class="review-vis">
               <option value="friends" ${myVis==='friends'?'selected':''}>친구만</option>
@@ -824,13 +825,13 @@
       const listHtml = others.length
         ? others.map(r => `
           <div class="review-item">
-            <div class="review-ava">${r.photoBase64 ? `<img src="${r.photoBase64}" alt="">` : (r.displayName||'?').charAt(0).toUpperCase()}</div>
+            <div class="review-ava">${safeImageSrc(r.photoBase64) ? `<img src="${safeImageSrc(r.photoBase64)}" alt="프로필">` : escapeHtml((r.displayName||'?').charAt(0).toUpperCase())}</div>
             <div class="review-body">
               <div class="review-top">
-                <span class="review-name">${(r.displayName||'익명').replace(/</g,'&lt;')}</span>
+                <span class="review-name">${escapeHtml(r.displayName||'익명')}</span>
                 <span class="review-stars">${starsHtml(r.rating, false)}</span>
               </div>
-              ${r.text ? `<div class="review-text">${(r.text).replace(/</g,'&lt;')}</div>` : ``}
+              ${r.text ? `<div class="review-text">${escapeHtml(r.text)}</div>` : ``}
             </div>
           </div>`).join("")
         : `<div class="review-empty">아직 다른 리뷰가 없어요</div>`;
