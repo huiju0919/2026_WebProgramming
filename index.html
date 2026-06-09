@@ -402,6 +402,7 @@
     async function init() {
       const { restaurants, menus } = await loadRestaurantData(true);
       allMenus       = menus;
+      allMenus.forEach(m => { m._rand = Math.random(); });   // 안정적 랜덤 키 (편향 없는 셔플 + 필터 토글 시 순서 유지)
       allRestaurants = restaurants.map(r => ({ ...r, photo: getRestaurantPhoto(r, menus) }));
       applyFilterAndSort();
 
@@ -490,12 +491,12 @@
           return da - db;
         });
       } else {
-        menus.sort(() => Math.random() - 0.5);
+        menus.sort((a, b) => (a._rand ?? 0) - (b._rand ?? 0));   // 고정 랜덤 키 정렬 = 균등 셔플 (Math.random()-0.5 편향 제거)
       }
 
       filteredMenus = menus;
       renderGrid();
-      preloadRatios(menus);
+      preloadRatios(menus.filter(m => !m.ratio));   // 비율은 Firestore에 저장돼 있어 다운로드 불필요 — 미저장분만 폴백
       document.getElementById("resultCount").textContent = `${filteredMenus.length}개 메뉴`;
     }
 
@@ -567,7 +568,7 @@
       const liked   = userMenuLikes.includes(m.id);
       const regular = userRegulars.includes(r.id);
       const url     = m.photo ? getStorageUrl(m.photo) : '';
-      const ratio   = url && imgRatioCache[url] ? imgRatioCache[url] : '';
+      const ratio   = m.ratio || (url && imgRatioCache[url] ? imgRatioCache[url] : '');
       const eager   = i < 10;   // 첫 두 줄 정도는 즉시·우선 로드
       const imgAttr = eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="auto"';
       return `
@@ -630,6 +631,7 @@
       if (btn) btn.classList.toggle("visible", !!show);
     }
     window.reexplore = function () {
+      allMenus.forEach(m => { m._rand = Math.random(); });   // 재탐색 누를 때만 새로 섞음
       applyFilterAndSort();   // 현재 필터 유지하며 순서 다시 섞기
       window.scrollTo({ top: 0, behavior: "smooth" });
       toggleReexplore(false);
