@@ -11,7 +11,8 @@ const CONFIG = {
     messagingSenderId: "",
     appId: "",
   },
-  GROQ_API_KEY: "", //Groq, Gemini 뭐든 상관 없음
+  GROQ_API_KEY: "",   // 폴백용 (OPENAI_API_KEY 없을 때 사용)
+  OPENAI_API_KEY: "", // 있으면 우선 사용 (gpt-4o-mini, 한국어 품질↑). 콘솔에서 spending limit 설정 권장
   KAKAO_MAP_KEY: "",
   HANSUNG_LAT: 37.5826,
   HANSUNG_LNG: 127.0108,

@@ -125,18 +125,22 @@ async function ensureAiRec(displayName) {
 }
 
 async function groqLine(displayName, restaurant, topTags) {
-  if (!window.CONFIG || !CONFIG.GROQ_API_KEY) return null;
+  if (typeof CONFIG === "undefined" || (!CONFIG.OPENAI_API_KEY && !CONFIG.GROQ_API_KEY)) return null;
+  const _useOpenAI = !!CONFIG.OPENAI_API_KEY;
+  const AI_URL   = _useOpenAI ? "https://api.openai.com/v1/chat/completions" : "https://api.groq.com/openai/v1/chat/completions";
+  const AI_KEY   = _useOpenAI ? CONFIG.OPENAI_API_KEY : CONFIG.GROQ_API_KEY;
+  const AI_MODEL = _useOpenAI ? "gpt-4o-mini" : "llama-3.3-70b-versatile";
   const prompt = `너는 음식 추천 앱의 친근한 도우미야. 아래 정보로 사용자에게 보낼 알림 문구 1개를 만들어.
 - 사용자 이름: ${displayName}
 - 취향 키워드: ${topTags.slice(0,3).join(", ") || "없음"}
 - 추천 식당: ${restaurant.name} (${restaurant.category||""})
 규칙: 한국어 한 문장, 40자 이내, 식당 이름 '${restaurant.name}'을 반드시 포함, 가볍고 친근하게. JSON만 출력: {"text":"문구"}`;
 
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const res = await fetch(AI_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${CONFIG.GROQ_API_KEY}` },
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${AI_KEY}` },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model: AI_MODEL,
       messages: [
         { role: "system", content: "Respond with valid JSON only." },
         { role: "user", content: prompt },
