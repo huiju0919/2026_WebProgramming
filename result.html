@@ -176,6 +176,7 @@
 
     .ai-loading-icon {
       font-size: 4.5rem;
+      color: var(--color-primary);
     }
 
     .ai-loading-title {
@@ -233,7 +234,7 @@
       <div class="ai-loading" id="aiLoading">
         <div class="ai-loading-icon" data-icon="target"></div>
         <div class="ai-loading-title">취향 분석 완료!</div>
-        <div class="ai-loading-sub">취향에 맞는 맛집을<br/>고르고 있어요</div>
+        <div class="ai-loading-sub" id="loadingMsg">취향에 맞는 맛집을<br/>고르고 있어요</div>
         <div class="spinner"></div>
       </div>
     </div>
@@ -242,11 +243,11 @@
 
   <!-- 식당 상세 모달 -->
   <div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
-    <div class="modal-sheet">
+    <div class="modal-sheet" id="modalSheet" role="dialog" aria-modal="true" aria-labelledby="modalName" tabindex="-1">
       <div class="modal-hero" id="modalHero">
         <span id="modalHeroEmoji">🍽️</span>
-        <img id="modalHeroImg" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0" />
-        <button class="modal-close" onclick="closeModal()"><span class="ic" data-icon="close"></span></button>
+        <img id="modalHeroImg" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0" alt="" />
+        <button class="modal-close" onclick="closeModal()" aria-label="닫기"><span class="ic" data-icon="close"></span></button>
       </div>
       <div class="modal-scroll-body">
         <div class="modal-body">
@@ -265,7 +266,7 @@
           <div class="modal-map-wrap">
             <div id="modalMap" class="modal-map"></div>
           </div>
-          <div class="modal-map-link" onclick="openKakaoMap()">카카오맵에서 크게 보기 ›</div>
+          <div class="modal-map-link" role="button" tabindex="0" onclick="openKakaoMap()">카카오맵에서 크게 보기 ›</div>
         </div>
       </div>
       <!-- 단골 / 길찾기 -->
@@ -305,6 +306,7 @@
     } from "./firebase.js";
     import { onAuthChanged } from "./auth.js";
     import { ICONS, applyIcons } from "./icons.js";
+    import { escapeHtml } from "./escape.js";
     applyIcons();
 
     // ── 상태 ──
@@ -334,15 +336,20 @@
     const menuCache = {};
 
     async function init() {
-      const swipeRaw = sessionStorage.getItem("swipeResult");
-      if (!swipeRaw) { showError("스와이프 결과가 없습니다. 다시 시도해주세요."); return; }
-      const swipeResult = JSON.parse(swipeRaw);
+      try {
+        const swipeRaw = sessionStorage.getItem("swipeResult");
+        if (!swipeRaw) { showError("스와이프 결과가 없습니다. 다시 시도해주세요."); return; }
+        const swipeResult = JSON.parse(swipeRaw);   // 손상된 값이면 throw → 아래 catch
 
-      const { restaurants, menus } = await loadRestaurantData();
-      allMenus       = menus;
-      allRestaurants = restaurants.map(r => ({ ...r, photo: getRestaurantPhoto(r, menus) }));
+        const { restaurants, menus } = await loadRestaurantData();
+        allMenus       = menus;
+        allRestaurants = restaurants.map(r => ({ ...r, photo: getRestaurantPhoto(r, menus) }));
 
-      await callGroq(swipeResult);
+        await callGroq(swipeResult);
+      } catch (err) {
+        console.error("결과 페이지 초기화 실패:", err);
+        showError("결과를 불러오지 못했어요. 다시 시도해주세요.");
+      }
     }
 
     // 로딩 메시지 순환
@@ -358,7 +365,7 @@
       if (!el) { clearInterval(msgTimer); return; }
       msgIdx = (msgIdx + 1) % loadingMsgs.length;
       el.innerHTML = loadingMsgs[msgIdx];
-    }, 2000);
+    }, 3000);
 
     init();
 
@@ -429,10 +436,17 @@ ${candidateLines}
 규칙:
 1. 회피 태그가 포함된 메뉴는 제외
 2. 가능하면 서로 다른 카테고리에서 선택
-3. taste_keywords: 선호 태그 중 대표 형용사 1~2개를 뽑아 "A하고 B한 맛"처럼 표현 (없으면 카테고리 기반)
+3. taste_keywords: 선호 태그 1~2개로 사용자의 입맛을 표현하는, 완결된 한국어 한 구절(15~22자).
+   - 반드시 '~ 맛'·'~ 한 끼'·'~ 메뉴'처럼 명사로 끝나는 완전한 표현으로 마무리. 중간에 끊긴 미완성 구절 금지.
+   - 형용사형 태그가 이미 '~한/~운/~인' 형태면 그대로 자연스럽게 활용('부드러운'→"부드럽고", '매운'→"매콤하고").
+     '부드러운하고' 같은 이중 활용은 비문이므로 금지.
+   - '맛/감/식감' 같은 명사형 태그는 버리지 말고 '~ 나는/도는/가득한'으로 이어 완성('감칠맛'→"감칠맛 도는").
+     단 '감칠맛한 맛'처럼 '맛'을 중복하지는 말 것.
+   - 좋은 예: "쫄깃하고 감칠맛 도는 맛", "바삭하게 튀긴 든든한 한 끼", "부드럽고 짭짤한 별미"
+   - 나쁜 예(절대 금지): "쫄깃하고 감칠맛"(미완성), "바삭한 튀김"(너무 단순), "부드러운하고 짭짤한 맛", "감칠맛한 맛"
 4. summary 작성 규칙:
    - 각 메뉴의 키워드는 반드시 해당 메뉴의 태그에서만 추출한다
-   - 태그 중 형용사를 A로, 명사를 B로 사용해 자연스러운 키워드를 만든다
+   - 태그를 한국어 문법에 맞게 자연스럽게 연결한다(어색한 활용·조사 금지, 위 taste_keywords 예시와 동일 기준)
    - 태그에 없는 단어는 절대 사용하지 않는다. 부정형 표현 절대 금지
    - 키워드 뒤에 마무리 문구를 붙인다. 친근하고 가볍게, 전체 50자 이내
 {"taste_keywords":"키워드","summary":"통합 추천 문구","recommendations":[{"menu_id":"0311"}]}`;
@@ -470,7 +484,8 @@ ${candidateLines}
             const status = response.status || 0;
             if ((status === 503 || status === 429) && attempt < 3) {
               const wait = attempt * 3000;
-              document.getElementById("loadingMsg").innerHTML =
+              const msgEl = document.getElementById("loadingMsg");
+              if (msgEl) msgEl.innerHTML =
                 `서버가 혼잡해요. ${wait/1000}초 후 재시도 중... (${attempt}/3)`;
               await new Promise(r => setTimeout(r, wait));
               continue;
@@ -543,18 +558,18 @@ ${candidateLines}
         const imgUrl = menu?.photo ? getStorageUrl(menu.photo) : null;
         const emoji  = catEmoji[r.category] || "🍽️";
         return `
-          <div class="recommend-card" onclick="openModal('${r.id}')">
+          <div class="recommend-card" role="button" tabindex="0" aria-label="${escapeHtml(menu ? menu.name : r.name)}" onclick="openModal('${r.id}')">
             <div class="rc-inner">
               <div class="rc-thumb">
                 ${imgUrl
-                  ? `<img src="${imgUrl}" alt="${menu.name}" onerror="onMenuImgError(this,'${menu.photo}')" />`
+                  ? `<img src="${imgUrl}" alt="${escapeHtml(menu.name)}" onerror="onMenuImgError(this,'${escapeHtml(menu.photo)}')" />`
                   : `<span style="font-size:2rem">${emoji}</span>`}
               </div>
               <div class="rc-info">
-                <div class="rc-name">${menu ? menu.name : r.name}</div>
-                <div class="rc-meta">${r.name} · ${r.category}</div>
+                <div class="rc-name">${escapeHtml(menu ? menu.name : r.name)}</div>
+                <div class="rc-meta">${escapeHtml(r.name)} · ${escapeHtml(r.category)}</div>
                 <div class="tag-list" style="margin-bottom:4px">
-                  ${r.tags ? r.tags.split(",").slice(0,3).map(t => `<span class="tag">${t.trim()}</span>`).join("") : ""}
+                  ${r.tags ? r.tags.split(",").slice(0,3).map(t => `<span class="tag">${escapeHtml(t.trim())}</span>`).join("") : ""}
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <span style="font-size:0.75rem;color:var(--color-text-tertiary)">${['₩','₩₩','₩₩₩'][r.price_range-1] || ''}</span>
@@ -569,11 +584,11 @@ ${candidateLines}
         ${keywords ? `
         <div class="taste-card">
           <div class="taste-label">당신의 취향</div>
-          <div class="taste-keywords">${keywords}</div>
-          ${summary ? `<div class="taste-subtitle">${summary}</div>` : ""}
+          <div class="taste-keywords">${escapeHtml(keywords)}</div>
+          ${summary ? `<div class="taste-subtitle">${escapeHtml(summary)}</div>` : ""}
         </div>` : summary ? `
         <div style="margin:var(--spacing-md);padding:14px 16px;background:var(--color-primary-light);border-radius:var(--radius-lg);font-size:0.875rem;color:var(--color-primary-dark);line-height:1.6;font-weight:500">
-          ${summary}
+          ${escapeHtml(summary)}
         </div>` : ""}
 
         <div class="section-title-row" style="margin-top:${keywords || summary ? '4px' : 'var(--spacing-md)'}">
@@ -665,8 +680,9 @@ ${candidateLines}
       };
       document.getElementById("modalName").textContent = restaurant.name;
       const badge = document.getElementById("modalStatusBadge");
-      badge.textContent = statusMap[status].text;
-      badge.className   = `badge ${statusMap[status].cls}`;
+      const st = statusMap[status] || statusMap.closed;
+      badge.textContent = st.text;
+      badge.className   = `badge ${st.cls}`;
 
       // 메타 정보
       const distanceValue = (restaurant.lat && restaurant.lng)
@@ -686,12 +702,12 @@ ${candidateLines}
         <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--color-border-light)">
           <span style="font-size:0.9375rem;width:20px;text-align:center;color:var(--color-text-tertiary)">${r.icon}</span>
           <span style="font-size:0.75rem;color:var(--color-text-tertiary);width:52px;flex-shrink:0">${r.label}</span>
-          <span style="font-size:0.8125rem;color:var(--color-text-primary);font-weight:500">${r.value}</span>
+          <span style="font-size:0.8125rem;color:var(--color-text-primary);font-weight:500">${escapeHtml(r.value)}</span>
         </div>`).join("");
 
       // 태그
       document.getElementById("modalTags").innerHTML = restaurant.tags
-        ? restaurant.tags.split(",").map(t => `<span class="tag">${t.trim()}</span>`).join("") : "";
+        ? restaurant.tags.split(",").map(t => `<span class="tag">${escapeHtml(t.trim())}</span>`).join("") : "";
 
       document.getElementById("reasonBox").style.display = "none";
 
@@ -708,10 +724,10 @@ ${candidateLines}
           <div class="menu-item">
             <div class="menu-item-left">
               ${m.photo
-                ? `<img class="menu-photo" src="${getStorageUrl(m.photo)}" alt="${m.name}"
-                     onerror="onMenuImgError(this,'${m.photo}')" />`
+                ? `<img class="menu-photo" src="${getStorageUrl(m.photo)}" alt="${escapeHtml(m.name)}"
+                     onerror="onMenuImgError(this,'${escapeHtml(m.photo)}')" />`
                 : `<div class="menu-photo-placeholder">🍽️</div>`}
-              <span class="menu-name">${m.name}</span>
+              <span class="menu-name">${escapeHtml(m.name)}</span>
             </div>
             <div class="menu-item-right">
               <span class="menu-price">${m.price ? m.price.toLocaleString() + '원' : '-'}</span>
@@ -727,6 +743,9 @@ ${candidateLines}
 
       document.getElementById("modalOverlay").classList.add("open");
       document.body.style.overflow = "hidden";
+      _lastFocusedBeforeModal = document.activeElement;       // 닫을 때 포커스 복원용
+      const _sheet = document.getElementById("modalSheet");
+      if (_sheet) _sheet.focus();
 
       setTimeout(() => initModalMap(restaurant), 400);
     };
@@ -737,16 +756,24 @@ ${candidateLines}
       if (!currentUser) { showToast("로그인이 필요합니다"); return; }
       const btn   = document.getElementById(`menu-heart-${menuId}`);
       const liked = userMenuLikes.includes(menuId);
-      if (liked) {
-        userMenuLikes = userMenuLikes.filter(id => id !== menuId);
-        await removeMenuLike(currentUser.uid, menuId);
-        if (btn) { btn.innerHTML = ICONS.heart; btn.classList.remove("active"); }
-        showToast("좋아요 취소");
-      } else {
-        userMenuLikes.push(menuId);
-        await addMenuLike(currentUser.uid, menuId);
-        if (btn) { btn.innerHTML = ICONS.heartFill; btn.classList.add("active"); }
-        showToast("좋아요!");
+      const paint = (on) => {
+        if (btn) { btn.innerHTML = on ? ICONS.heartFill : ICONS.heart; btn.classList.toggle("active", on); }
+      };
+      // 낙관적 업데이트
+      if (liked) userMenuLikes = userMenuLikes.filter(id => id !== menuId);
+      else       userMenuLikes.push(menuId);
+      paint(!liked);
+      try {
+        if (liked) await removeMenuLike(currentUser.uid, menuId);
+        else       await addMenuLike(currentUser.uid, menuId);
+        showToast(liked ? "좋아요 취소" : "좋아요!");
+      } catch (err) {
+        // 저장 실패 → 롤백
+        console.error(err);
+        if (liked) userMenuLikes.push(menuId);
+        else       userMenuLikes = userMenuLikes.filter(id => id !== menuId);
+        paint(liked);
+        showToast("저장에 실패했어요. 다시 시도해주세요");
       }
     };
 
@@ -758,30 +785,66 @@ ${candidateLines}
       document.getElementById("modalRegularLabel").textContent = isReg ? "단골 ✓" : "단골";
     }
 
+    let _lastFocusedBeforeModal = null;
+
     window.closeModal = function () {
       document.getElementById("modalOverlay").classList.remove("open");
       document.body.style.overflow = "";
+      if (_lastFocusedBeforeModal && _lastFocusedBeforeModal.focus) _lastFocusedBeforeModal.focus();
+      _lastFocusedBeforeModal = null;
     };
 
     window.handleOverlayClick = function (e) {
       if (e.target === document.getElementById("modalOverlay")) closeModal();
     };
 
+    // 모달 열려 있을 때: ESC 닫기 + Tab 포커스 트랩
+    document.addEventListener("keydown", (e) => {
+      const overlay = document.getElementById("modalOverlay");
+      if (!overlay || !overlay.classList.contains("open")) return;
+      if (e.key === "Escape") { e.preventDefault(); closeModal(); return; }
+      if (e.key !== "Tab") return;
+      const sheet = document.getElementById("modalSheet");
+      const focusables = [...sheet.querySelectorAll('a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+        .filter(el => el.offsetParent !== null);
+      if (!focusables.length) return;
+      const first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
+    // role="button"인 div(카드·링크)를 Enter/Space로도 실행 (키보드 접근성)
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const el = document.activeElement;
+      if (el && el.tagName === "DIV" && el.getAttribute("role") === "button") {
+        e.preventDefault();
+        el.click();
+      }
+    });
+
     // ── 단골 토글  ──
     window.handleModalRegular = async function () {
       if (!currentUser)      { showToast("로그인이 필요합니다"); return; }
       if (!currentRestaurant) return;
-      const isReg = userRegulars.includes(currentRestaurant.id);
-      if (isReg) {
-        userRegulars = userRegulars.filter(id => id !== currentRestaurant.id);
-        await removeRegular(currentUser.uid, currentRestaurant.id);
-        showToast("단골 해제");
-      } else {
-        userRegulars.push(currentRestaurant.id);
-        await addRegular(currentUser.uid, currentRestaurant.id);
-        showToast("단골 등록");
-      }
+      const rid   = currentRestaurant.id;
+      const isReg = userRegulars.includes(rid);
+      // 낙관적 업데이트
+      if (isReg) userRegulars = userRegulars.filter(id => id !== rid);
+      else       userRegulars.push(rid);
       updateModalRegularBtn();
+      try {
+        if (isReg) await removeRegular(currentUser.uid, rid);
+        else       await addRegular(currentUser.uid, rid);
+        showToast(isReg ? "단골 해제" : "단골 등록");
+      } catch (err) {
+        // 저장 실패 → 롤백
+        console.error(err);
+        if (isReg) userRegulars.push(rid);
+        else       userRegulars = userRegulars.filter(id => id !== rid);
+        updateModalRegularBtn();
+        showToast("저장에 실패했어요. 다시 시도해주세요");
+      }
     };
 
     window.openNav = function () {

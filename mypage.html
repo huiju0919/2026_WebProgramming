@@ -812,10 +812,10 @@
 
   <!-- 식당 상세 모달 -->
   <div class="modal-overlay" id="modalOverlay" onclick="handleModalOutsideClick(event)">
-    <div class="modal-sheet" id="modalSheet">
+    <div class="modal-sheet" id="modalSheet" role="dialog" aria-modal="true" aria-labelledby="modalName" tabindex="-1">
       <div class="modal-hero" id="modalHero">
         <div class="modal-hero-placeholder" id="modalHeroPlaceholder">🍽️</div>
-        <button class="modal-close" onclick="closeModal()"><span class="ic" data-icon="close"></span></button>
+        <button class="modal-close" onclick="closeModal()" aria-label="닫기"><span class="ic" data-icon="close"></span></button>
       </div>
       <div class="modal-scroll-body">
         <div class="modal-body">
@@ -836,7 +836,7 @@
           <div class="modal-map-wrap">
             <div id="modalMap" class="modal-map"></div>
           </div>
-          <div class="modal-map-link" onclick="openKakaoMap()">카카오맵에서 크게 보기 ›</div>
+          <div class="modal-map-link" role="button" tabindex="0" onclick="openKakaoMap()">카카오맵에서 크게 보기 ›</div>
         </div>
       </div>
       <div class="modal-btn-row">
@@ -927,7 +927,7 @@
            } from "./firebase.js";
     import { onAuthChanged, logout } from "./auth.js";
     import { ICONS, applyIcons } from "./icons.js";
-    import { escapeHtml } from "./escape.js";
+    import { escapeHtml, safeImageSrc } from "./escape.js";
     applyIcons();
 
     // ── 대표색(Accent) ──
@@ -948,16 +948,33 @@
 
     onAuthChanged(async (user) => {
       currentUser    = user;
-      const { restaurants, menus } = await loadRestaurantData(true);
-      allMenus       = menus;
-      allRestaurants = restaurants.map(r => ({ ...r, photo: getRestaurantPhoto(r, menus) }));
-      if (!user) { updateNavAvatar(null); renderGuest(); return; }
-      userData = await getUserDoc(user.uid);
-      saveUserIdentity(user.uid, user.email, user.displayName);  // 이메일 백필(친구 검색용)
-      tasteProfile = await getTasteProfile(user.uid);
-      blockedMenus = await getBlockedMenus(user.uid);
-      updateNavAvatar(user, userData);
-      renderAll();
+      try {
+        const { restaurants, menus } = await loadRestaurantData(true);
+        allMenus       = menus;
+        allRestaurants = restaurants.map(r => ({ ...r, photo: getRestaurantPhoto(r, menus) }));
+        if (!user) { updateNavAvatar(null); renderGuest(); return; }
+        userData = await getUserDoc(user.uid);
+        saveUserIdentity(user.uid, user.email, user.displayName);  // 이메일 백필(친구 검색용)
+        tasteProfile = await getTasteProfile(user.uid);
+        blockedMenus = await getBlockedMenus(user.uid);
+        updateNavAvatar(user, userData);
+        renderAll();
+      } catch (err) {
+        // 로드 실패 → 영구 스피너 대신 에러 안내
+        console.error("마이페이지 로드 실패:", err);
+        updateNavAvatar(user || null);
+        const main = document.getElementById("mainContent");
+        if (main) {
+          main.classList.add("is-single-col");
+          main.innerHTML = `
+            <div class="guest-section">
+              <div class="guest-icon">${ICONS.frown}</div>
+              <div class="guest-title">불러오지 못했어요</div>
+              <div class="guest-sub">네트워크 확인 후 다시 시도해주세요</div>
+              <button class="btn-primary" onclick="location.reload()" style="max-width:200px">새로고침</button>
+            </div>`;
+        }
+      }
     });
 
     // ─── RENDER ───────────────────────────────
@@ -1232,7 +1249,7 @@
         const name = escapeHtml(m.name);
         const emoji = catEmoji[restaurant?.category] || '🍽️';
         return `
-        <div class="scroll-card" onclick="openRestaurant('${escapeHtml(String(m.restaurantId))}')">
+        <div class="scroll-card" role="button" tabindex="0" onclick="openRestaurant('${escapeHtml(String(m.restaurantId))}')">
           <div class="scroll-card-img">
             ${m.photo
               ? `<img src="${getStorageUrl(m.photo)}" alt="${name}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji}',style:'font-size:1.75rem'}))" />`
@@ -1259,7 +1276,7 @@
         const name  = escapeHtml(r.name);
         const cat   = escapeHtml(r.category);
         return `
-        <div class="scroll-card" onclick="openRestaurant('${escapeHtml(r.id)}')">
+        <div class="scroll-card" role="button" tabindex="0" onclick="openRestaurant('${escapeHtml(r.id)}')">
           <div class="scroll-card-img">
             ${r.photo
                 ? `<img src="${getStorageUrl(r.photo)}" alt="${name}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji}',style:'font-size:1.75rem'}))" />`
@@ -1332,7 +1349,7 @@
               ? `<img src="${getStorageUrl(menuWithPhoto.photo)}" alt="" onerror="this.style.display='none'">`
               : `<span style="font-size:1.5rem">${emoji}</span>`;
             return `
-              <div class="myrev-card${selected?' grid-card-selected':''}" onclick="toggleSelectCard('${rv.restaurantId}')">
+              <div class="myrev-card${selected?' grid-card-selected':''}" role="button" tabindex="0" onclick="toggleSelectCard('${rv.restaurantId}')">
                 <div class="myrev-thumb" style="position:relative">${thumbHtml}
                   <div class="grid-select-dot${selected?' grid-card-selected':''}">${selected?'✓':''}</div>
                 </div>
@@ -1359,7 +1376,7 @@
           const selected = selectedIds.has(m.id);
           if (isSelectMode) {
             return `
-            <div class="grid-card${selected?' grid-card-selected':''}" onclick="toggleSelectCard('${id}')">
+            <div class="grid-card${selected?' grid-card-selected':''}" role="button" tabindex="0" onclick="toggleSelectCard('${id}')">
               <div class="grid-card-img">
                 ${m.photo
                   ? `<img src="${getStorageUrl(m.photo)}" alt="${name}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji}',style:'font-size:1.75rem'}))" />`
@@ -1373,7 +1390,7 @@
             </div>`;
           }
           return `
-          <div class="grid-card" onclick="openRestaurant('${escapeHtml(String(m.restaurantId))}')">
+          <div class="grid-card" role="button" tabindex="0" onclick="openRestaurant('${escapeHtml(String(m.restaurantId))}')">
             <div class="grid-card-img">
               ${m.photo
                 ? `<img src="${getStorageUrl(m.photo)}" alt="${name}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji}',style:'font-size:1.75rem'}))" />`
@@ -1398,7 +1415,7 @@
         const selected = selectedIds.has(r.id);
         if (isSelectMode) {
           return `
-          <div class="grid-card${selected?' grid-card-selected':''}" onclick="toggleSelectCard('${id}')">
+          <div class="grid-card${selected?' grid-card-selected':''}" role="button" tabindex="0" onclick="toggleSelectCard('${id}')">
             <div class="grid-card-img">
               ${r.photo
                 ? `<img src="${getStorageUrl(r.photo)}" alt="${name}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji}',style:'font-size:1.75rem'}))" />`
@@ -1412,7 +1429,7 @@
           </div>`;
         }
         return `
-        <div class="grid-card" onclick="openRestaurant('${id}')">
+        <div class="grid-card" role="button" tabindex="0" onclick="openRestaurant('${id}')">
           <div class="grid-card-img">
             ${r.photo
               ? `<img src="${getStorageUrl(r.photo)}" alt="${name}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji}',style:'font-size:1.75rem'}))" />`
@@ -1822,7 +1839,8 @@
 
     // ── 친구 기능 ──
     function _frAva(u){
-      if (u.photoBase64) return `<div class="fr-ava"><img src="${u.photoBase64}" alt=""></div>`;
+      const _src = safeImageSrc(u.photoBase64);
+      if (_src) return `<div class="fr-ava"><img src="${_src}" alt=""></div>`;
       const ini = (String(u.displayName || u.email || "?").trim().charAt(0) || "?").toUpperCase();
       return `<div class="fr-ava">${escapeHtml(ini)}</div>`;
     }
@@ -1870,7 +1888,7 @@
       html += fr.length ? fr.map(u => `
           <div class="fr-row-wrap">
           <div class="fr-item">
-            <div class="fr-click" onclick="frToggleTaste('${u.uid}')">
+            <div class="fr-click" role="button" tabindex="0" onclick="frToggleTaste('${u.uid}')">
               ${_frAva(u)}
               <div class="fr-meta"><div class="fr-name">${escapeHtml(u.displayName||"이름 없음")}</div><div class="fr-mail">${escapeHtml(u.email)}</div></div>
             </div>
@@ -1948,7 +1966,7 @@
       const listHtml = others.length
         ? others.map(r => `
           <div class="review-item">
-            <div class="review-ava">${r.photoBase64 ? `<img src="${r.photoBase64}" alt="">` : (r.displayName||'?').charAt(0).toUpperCase()}</div>
+            <div class="review-ava">${safeImageSrc(r.photoBase64) ? `<img src="${safeImageSrc(r.photoBase64)}" alt="">` : escapeHtml((r.displayName||'?').charAt(0).toUpperCase())}</div>
             <div class="review-body">
               <div class="review-top">
                 <span class="review-name">${escapeHtml(r.displayName||'익명')}</span>
@@ -2061,14 +2079,14 @@
         const r = allRestaurants.find(x => x.id === a.restaurantId);
         if (!r) return "";
         const f = fmap[a.uid] || {};
-        const ava = f.photoBase64
-          ? `<img src="${f.photoBase64}" alt="">`
-          : (f.displayName || "?").charAt(0).toUpperCase();
+        const ava = safeImageSrc(f.photoBase64)
+          ? `<img src="${safeImageSrc(f.photoBase64)}" alt="">`
+          : escapeHtml((f.displayName || "?").charAt(0).toUpperCase());
         const extra = a.type === "review"
           ? `<div class="feed-review">${"★".repeat(a.rating||0)}<span class="feed-review-off">${"★".repeat(5-(a.rating||0))}</span>${a.text ? ` · ${escapeHtml(a.text)}` : ""}</div>`
           : "";
         return `
-          <div class="feed-item" onclick="openModal('${r.id}')">
+          <div class="feed-item" role="button" tabindex="0" onclick="openModal('${r.id}')">
             <div class="feed-ava">${ava}</div>
             <div class="feed-body">
               <div class="feed-line"><b>${escapeHtml(f.displayName||"친구")}</b>님이 <b>${escapeHtml(r.name)}</b>을(를) ${FEED_VERB[a.type]||"활동했어요"} ${FEED_ICON[a.type]||""}</div>
@@ -2341,7 +2359,7 @@
         const thumb = r.photo
           ? `<img src="${getStorageUrl(r.photo)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji}'}))">`
           : emoji;
-        return `<div class="fr-rest" onclick="closeFriends(); openModal('${r.id}')">
+        return `<div class="fr-rest" role="button" tabindex="0" onclick="closeFriends(); openModal('${r.id}')">
             <span class="fr-rest-thumb">${thumb}</span>
             <span class="fr-rest-name">${escapeHtml(r.name)}</span>
             <span class="fr-rest-cat">${escapeHtml(r.category||"")}</span>
@@ -2415,7 +2433,7 @@
         html += `
           <div class="edit-body">
             <div class="edit-photo-wrap">
-              <div class="edit-photo" id="editPhotoPreview" onclick="document.getElementById('photoInput').click()">
+              <div class="edit-photo" id="editPhotoPreview" role="button" tabindex="0" aria-label="프로필 사진 변경" onclick="document.getElementById('photoInput').click()">
                 ${photoSrc ? `<img src="${escapeHtml(photoSrc)}" alt="프로필" onerror="this.style.display='none'" />` : escapeHtml(nameInitial)}
                 <div class="edit-photo-overlay">${ICONS.camera}</div>
               </div>
@@ -2439,7 +2457,7 @@
         </div>
         <div class="settings-section" style="margin:0 var(--spacing-md)">
           <div class="settings-group-title">디스플레이</div>
-          <div class="settings-row" onclick="toggleDarkMode()">
+          <div class="settings-row" role="button" tabindex="0" onclick="toggleDarkMode()">
             <div class="settings-icon" style="background:#1A1A2E;color:#fff">${ICONS.moon}</div>
             <div class="settings-label">
               <div class="settings-name">다크 모드</div>
@@ -2467,7 +2485,7 @@
             </div>
           </div>
           <div class="settings-group-title">지원</div>
-          <div class="settings-row" onclick="openCustomerService()">
+          <div class="settings-row" role="button" tabindex="0" onclick="openCustomerService()">
             <div class="settings-icon" style="background:#E3F2FD;color:#2D7DD2">${ICONS.message}</div>
             <div class="settings-label">
               <div class="settings-name">고객센터</div>
@@ -2475,7 +2493,7 @@
             </div>
             <span class="settings-right">›</span>
           </div>
-          <div class="settings-row" onclick="openPrivacyPolicy()">
+          <div class="settings-row" role="button" tabindex="0" onclick="openPrivacyPolicy()">
             <div class="settings-icon" style="background:#F3E5F5;color:#9C5FB8">${ICONS.lock}</div>
             <div class="settings-label">
               <div class="settings-name">개인정보처리방침</div>
@@ -2483,7 +2501,7 @@
             </div>
             <span class="settings-right">›</span>
           </div>
-          <div class="settings-row" onclick="showAppInfo()">
+          <div class="settings-row" role="button" tabindex="0" onclick="showAppInfo()">
             <div class="settings-icon" style="background:#E8F5E9;color:#3C9A5F">${ICONS.info}</div>
             <div class="settings-label">
               <div class="settings-name">앱 정보</div>
@@ -2493,7 +2511,7 @@
           </div>
           ${loggedIn ? `
           <div class="settings-group-title">계정</div>
-          <div class="settings-row" onclick="location.href='./settings.html'">
+          <div class="settings-row" role="button" tabindex="0" onclick="location.href='./settings.html'">
             <div class="settings-icon" style="background:#E8EAF6;color:#5C6BC0">${ICONS.settings}</div>
             <div class="settings-label">
               <div class="settings-name">환경설정</div>
@@ -2501,7 +2519,7 @@
             </div>
             <span class="settings-right">›</span>
           </div>
-          <div class="settings-row" onclick="openLogoutConfirm();closeEditProfile()">
+          <div class="settings-row" role="button" tabindex="0" onclick="openLogoutConfirm();closeEditProfile()">
             <div class="settings-icon" style="background:#FFEBEE;color:var(--color-danger)">${ICONS.logOut}</div>
             <div class="settings-label">
               <div class="settings-name" style="color:var(--color-danger)">로그아웃</div>
@@ -2760,8 +2778,9 @@
         closed:  { text: "영업종료",    cls: "badge-closed"  },
         dayoff: { text: "휴무일",      cls: "badge-dayoff" },
       };
-      badge.textContent = statusMap[status].text;
-      badge.className   = `badge ${statusMap[status].cls}`;
+      const st = statusMap[status] || statusMap.closed;
+      badge.textContent = st.text;
+      badge.className   = `badge ${st.cls}`;
 
       const distVal = (restaurant.lat && restaurant.lng)
         ? formatDistance(CONFIG.HANSUNG_LAT, CONFIG.HANSUNG_LNG, restaurant.lat, restaurant.lng)
@@ -2825,6 +2844,9 @@
       renderReviews(restaurantId);
       document.getElementById("modalOverlay").classList.add("open");
       document.body.style.overflow = "hidden";
+      _lastFocusedBeforeModal = document.activeElement;       // 닫을 때 포커스 복원용
+      const _sheet = document.getElementById("modalSheet");
+      if (_sheet) _sheet.focus();
 
       setTimeout(() => initModalMap(restaurant), 400);
     }
@@ -2835,18 +2857,27 @@
       if (!currentUser) { showToast("로그인이 필요합니다"); return; }
       const btn   = document.getElementById(`menu-heart-${menuId}`);
       const liked = (userData?.menuLikes || []).includes(menuId);
-      if (liked) {
-        userData.menuLikes = (userData.menuLikes||[]).filter(id => id !== menuId);
-        await removeMenuLike(currentUser.uid, menuId);
-        if (btn) { btn.innerHTML = ICONS.heart; btn.classList.remove("active"); }
-        showToast("좋아요 취소");
-      } else {
-        userData.menuLikes = [...(userData.menuLikes||[]), menuId];
-        await addMenuLike(currentUser.uid, menuId, allMenus.find(m => m.id === menuId)?.restaurantId);
-        if (btn) { btn.innerHTML = ICONS.heartFill; btn.classList.add("active"); }
-        showToast("좋아요!");
-      }
+      const paint = (on) => {
+        if (btn) { btn.innerHTML = on ? ICONS.heartFill : ICONS.heart; btn.classList.toggle("active", on); }
+      };
+      // 낙관적 업데이트
+      if (liked) userData.menuLikes = (userData.menuLikes||[]).filter(id => id !== menuId);
+      else       userData.menuLikes = [...(userData.menuLikes||[]), menuId];
+      paint(!liked);
       refreshLikesUI();
+      try {
+        if (liked) await removeMenuLike(currentUser.uid, menuId);
+        else       await addMenuLike(currentUser.uid, menuId, allMenus.find(m => m.id === menuId)?.restaurantId);
+        showToast(liked ? "좋아요 취소" : "좋아요!");
+      } catch (err) {
+        // 저장 실패 → 롤백
+        console.error(err);
+        if (liked) userData.menuLikes = [...(userData.menuLikes||[]), menuId];
+        else       userData.menuLikes = (userData.menuLikes||[]).filter(id => id !== menuId);
+        paint(liked);
+        refreshLikesUI();
+        showToast("저장에 실패했어요. 다시 시도해주세요");
+      }
     };
 
     function updateModalRegularBtn() {
@@ -2858,30 +2889,67 @@
       document.getElementById("modalRegularLabel").textContent = isRegular ? "단골 ✓" : "단골";
     }
 
+    let _lastFocusedBeforeModal = null;
+
     window.closeModal = function () {
       document.getElementById("modalOverlay").classList.remove("open");
       document.body.style.overflow = "";
+      if (_lastFocusedBeforeModal && _lastFocusedBeforeModal.focus) _lastFocusedBeforeModal.focus();
+      _lastFocusedBeforeModal = null;
     };
 
     window.handleModalOutsideClick = function (e) {
       if (e.target === document.getElementById("modalOverlay")) closeModal();
     };
 
+    // 식당 상세 모달 열려 있을 때: ESC 닫기 + Tab 포커스 트랩
+    document.addEventListener("keydown", (e) => {
+      const overlay = document.getElementById("modalOverlay");
+      if (!overlay || !overlay.classList.contains("open")) return;
+      if (e.key === "Escape") { e.preventDefault(); closeModal(); return; }
+      if (e.key !== "Tab") return;
+      const sheet = document.getElementById("modalSheet");
+      const focusables = [...sheet.querySelectorAll('a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+        .filter(el => el.offsetParent !== null);
+      if (!focusables.length) return;
+      const first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
+    // role="button"인 div(카드·행·링크)를 Enter/Space로도 실행 (키보드 접근성)
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const el = document.activeElement;
+      if (el && el.tagName === "DIV" && el.getAttribute("role") === "button") {
+        e.preventDefault();
+        el.click();
+      }
+    });
+
     window.handleModalRegular = async function () {
       if (!currentUser) { showToast("로그인이 필요합니다"); return; }
       if (!currentRestaurant) return;
-      const isRegular = (userData?.regulars || []).includes(currentRestaurant.id);
-      if (isRegular) {
-        userData.regulars = userData.regulars.filter(id => id !== currentRestaurant.id);
-        await removeRegular(currentUser.uid, currentRestaurant.id);
-        showToast("단골 해제");
-      } else {
-        userData.regulars = [...(userData.regulars || []), currentRestaurant.id];
-        await addRegular(currentUser.uid, currentRestaurant.id);
-        showToast("단골 등록");
-      }
+      const rid       = currentRestaurant.id;
+      const isRegular = (userData?.regulars || []).includes(rid);
+      // 낙관적 업데이트
+      if (isRegular) userData.regulars = (userData.regulars||[]).filter(id => id !== rid);
+      else           userData.regulars = [...(userData.regulars || []), rid];
       updateModalRegularBtn();
       refreshRegularsUI();
+      try {
+        if (isRegular) await removeRegular(currentUser.uid, rid);
+        else           await addRegular(currentUser.uid, rid);
+        showToast(isRegular ? "단골 해제" : "단골 등록");
+      } catch (err) {
+        // 저장 실패 → 롤백
+        console.error(err);
+        if (isRegular) userData.regulars = [...(userData.regulars || []), rid];
+        else           userData.regulars = (userData.regulars||[]).filter(id => id !== rid);
+        updateModalRegularBtn();
+        refreshRegularsUI();
+        showToast("저장에 실패했어요. 다시 시도해주세요");
+      }
     };
 
     window.openKakaoMap = function () {

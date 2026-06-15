@@ -412,9 +412,9 @@
 
     <!-- 버튼: cardDeck 밖에 위치, position:absolute로 카드와 정렬 -->
     <div class="swipe-buttons" id="swipeButtons">
-      <div class="swipe-btn-gutter"><button class="btn-nope" onclick="swipeLeft()" data-icon="close"></button></div>
+      <div class="swipe-btn-gutter"><button class="btn-nope" onclick="swipeLeft()" data-icon="close" aria-label="싫어요"></button></div>
       <div class="swipe-btn-spacer"></div>
-      <div class="swipe-btn-gutter"><button class="btn-like" onclick="swipeRight()" data-icon="heartFill"></button></div>
+      <div class="swipe-btn-gutter"><button class="btn-like" onclick="swipeRight()" data-icon="heartFill" aria-label="좋아요"></button></div>
     </div>
 
     <!-- 완료 화면 -->
@@ -485,6 +485,7 @@
     } from "./firebase.js";
     import { onAuthChanged } from "./auth.js";
     import { ICONS, applyIcons } from "./icons.js";
+    import { escapeHtml } from "./escape.js";
     applyIcons();
     // ── 상수 ──
     const TOTAL      = CONFIG.SWIPE.TOTAL;         // 18
@@ -652,7 +653,7 @@
             descEl.textContent = `${profile.sessionCount}번의 스와이프 데이터가 있어요`;
             if (topTags.length > 0) {
               chipsEl.innerHTML = topTags
-                .map(t => `<span class="taste-tag-chip">${t}</span>`)
+                .map(t => `<span class="taste-tag-chip">${escapeHtml(t)}</span>`)
                 .join("");
             }
             btnTaste.style.display = "flex";
@@ -1397,8 +1398,8 @@
           ${fallback}
         </div>
         <div class="swipe-card-info">
-          <div class="swipe-card-name">${menu?.name || "-"}</div>
-          ${menu?.id ? `<div class="swipe-card-block-row"><button class="btn-block-menu" onclick="handleBlockMenu(event,'${menu.id}','${(menu.name||'').replace(/'/g,"\'")}','${(restaurant.name||'').replace(/'/g,"\'")}')">다시 보지 않기</button></div>` : ''}
+          <div class="swipe-card-name">${escapeHtml(menu?.name || "-")}</div>
+          ${menu?.id ? `<div class="swipe-card-block-row"><button class="btn-block-menu" data-menu-id="${escapeHtml(menu.id)}" data-menu-name="${escapeHtml(menu.name||'')}" data-restaurant-name="${escapeHtml(restaurant.name||'')}" onclick="handleBlockMenu(event)">다시 보지 않기</button></div>` : ''}
         </div>`;
 
       // photo 정보를 카드 엘리먼트에 저장해두고 DOM 추가 후 로드
@@ -1564,9 +1565,10 @@
     }
 
     async function handleComplete() {
-      // 스와이프 횟수 저장
+      // 스와이프 횟수 저장 (부가 기능 — 실패해도 결과 저장/이동은 계속)
       if (currentUser) {
-        await incrementSwipeCount(currentUser.uid);
+        try { await incrementSwipeCount(currentUser.uid); }
+        catch (err) { console.warn("스와이프 횟수 저장 실패:", err); }
       }
 
       // 결과 저장
@@ -1622,9 +1624,11 @@
 
     // ── 다시 보지 않기 ──
     let _blockInProgress = false;
-    window.handleBlockMenu = async function (e, menuId, menuName, restaurantName) {
+    window.handleBlockMenu = async function (e) {
       e.stopPropagation();
       e.preventDefault();
+      const ds = e.currentTarget.dataset;
+      const menuId = ds.menuId, menuName = ds.menuName, restaurantName = ds.restaurantName;
       // 드래그 중이거나 이미 처리 중이면 무시
       if (isDragging || _blockInProgress) return;
       _blockInProgress = true;
@@ -1644,6 +1648,7 @@
 
     // ── 버튼 클릭 ──
     window.swipeRight = function () {
+      if (_animating) return;
       activeCard = document.getElementById("activeCard");
       if (!activeCard) return;
       currentX = 150;
@@ -1651,6 +1656,7 @@
     };
 
     window.swipeLeft = function () {
+      if (_animating) return;
       activeCard = document.getElementById("activeCard");
       if (!activeCard) return;
       currentX = -150;

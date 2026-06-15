@@ -232,10 +232,10 @@
 
   <!-- 식당 상세 모달 -->
   <div class="modal-overlay" id="modalOverlay" onclick="handleModalOutsideClick(event)">
-    <div class="modal-sheet" id="modalSheet">
+    <div class="modal-sheet" id="modalSheet" role="dialog" aria-modal="true" aria-labelledby="modalName" tabindex="-1">
       <div class="modal-hero" id="modalHero">
         <div class="modal-hero-placeholder" id="modalHeroPlaceholder">🍽️</div>
-        <button class="modal-close" onclick="closeModal()"><span class="ic" data-icon="close"></span></button>
+        <button class="modal-close" onclick="closeModal()" aria-label="닫기"><span class="ic" data-icon="close"></span></button>
       </div>
       <div class="modal-scroll-body">
         <div class="modal-body">
@@ -256,7 +256,7 @@
           <div class="modal-map-wrap">
             <div id="modalMap" class="modal-map"></div>
           </div>
-          <div class="modal-map-link" onclick="openKakaoMap()">카카오맵에서 크게 보기 ›</div>
+          <div class="modal-map-link" role="button" tabindex="0" onclick="openKakaoMap()">카카오맵에서 크게 보기 ›</div>
         </div>
       </div>
       <div class="modal-btn-row">
@@ -359,14 +359,20 @@
     onAuthChanged(async (user) => {
       currentUser = user;
       if (user) {
-        const userData = await getUserDoc(user.uid);
-        userMenuLikes = userData.menuLikes || [];
-        userRegulars = userData.regulars || [];
-        userFriends  = userData.friends  || [];
-        userName     = userData.displayName || user.displayName || "사용자";
-        userPhoto    = userData.photoBase64 || user.photoURL || "";
-        updateNavAvatar(user, userData);
-        renderGrid();
+        try {
+          const userData = await getUserDoc(user.uid);
+          userMenuLikes = userData.menuLikes || [];
+          userRegulars = userData.regulars || [];
+          userFriends  = userData.friends  || [];
+          userName     = userData.displayName || user.displayName || "사용자";
+          userPhoto    = userData.photoBase64 || user.photoURL || "";
+          updateNavAvatar(user, userData);
+          renderGrid();
+        } catch (err) {
+          // 사용자 데이터 로드 실패해도 피드(그리드)는 계속 보이도록 진행
+          console.error("사용자 정보 로드 실패:", err);
+          updateNavAvatar(user);
+        }
       } else {
         updateNavAvatar(null);
       }
@@ -381,20 +387,29 @@
     });
 
     async function init() {
-      const { restaurants, menus } = await loadRestaurantData(true);
-      allMenus       = menus;
-      allMenus.forEach(m => { m._rand = Math.random(); });   // 안정적 랜덤 키 (편향 없는 셔플 + 필터 토글 시 순서 유지)
-      allRestaurants = restaurants.map(r => ({ ...r, photo: getRestaurantPhoto(r, menus) }));
-      applyFilterAndSort();
+      try {
+        const { restaurants, menus } = await loadRestaurantData(true);
+        allMenus       = menus;
+        allMenus.forEach(m => { m._rand = Math.random(); });   // 안정적 랜덤 키 (편향 없는 셔플 + 필터 토글 시 순서 유지)
+        allRestaurants = restaurants.map(r => ({ ...r, photo: getRestaurantPhoto(r, menus) }));
+        applyFilterAndSort();
 
-      const params   = new URLSearchParams(window.location.search);
-      const targetId = params.get("restaurant");
-      if (targetId) {
-        if (_authReady) {
-          openModal(targetId);
-        } else {
-          _pendingModalId = targetId;
+        const params   = new URLSearchParams(window.location.search);
+        const targetId = params.get("restaurant");
+        if (targetId) {
+          if (_authReady) {
+            openModal(targetId);
+          } else {
+            _pendingModalId = targetId;
+          }
         }
+      } catch (err) {
+        // 데이터 로드 실패 → 영구 스피너 대신 에러 안내
+        console.error("식당 데이터 로드 실패:", err);
+        const grid = document.getElementById("restaurantGrid");
+        if (grid) grid.innerHTML = `<div class="grid-error" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:var(--color-text-secondary)">식당 정보를 불러오지 못했어요.<br/>네트워크 확인 후 <button class="btn-text" onclick="location.reload()" style="color:var(--color-primary);font-weight:600">새로고침</button> 해주세요.</div>`;
+        const rc = document.getElementById("resultCount");
+        if (rc) rc.textContent = "불러오기 실패";
       }
     }
     init();
@@ -553,10 +568,10 @@
       const eager   = i < 10;   // 첫 두 줄 정도는 즉시·우선 로드
       const imgAttr = eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="auto"';
       return `
-        <div class="restaurant-card" onclick="openModal('${r.id}','${m.id}')">
+        <div class="restaurant-card" role="button" tabindex="0" aria-label="${escapeHtml(m.name)}" onclick="openModal('${r.id}','${m.id}')">
           <div class="card-img-wrap"${ratio ? ` style="aspect-ratio:${ratio}"` : ''}>
             ${m.photo
-              ? `<img class="card-img" src="${url}" alt="${m.name}" ${imgAttr} decoding="async" onload="onCardImg(this)" onerror="this.remove()" /><div class="card-img-placeholder">${getCategoryEmoji(r.category)}</div>`
+              ? `<img class="card-img" src="${url}" alt="${escapeHtml(m.name)}" ${imgAttr} decoding="async" onload="onCardImg(this)" onerror="this.remove()" /><div class="card-img-placeholder">${getCategoryEmoji(r.category)}</div>`
               : `<div class="card-img-placeholder">${getCategoryEmoji(r.category)}</div>`}
             ${status === 'closed'  ? '<span class="card-closed-badge">영업종료</span>' : ''}
             ${status === 'dayoff' ? '<span class="card-dayoff-badge">휴무일</span>' : ''}
@@ -643,19 +658,28 @@
       if (!currentUser) { showToast("로그인이 필요합니다"); return; }
       const heartEl = document.getElementById(`menu-heart-${menuId}`);
       const liked   = userMenuLikes.includes(menuId);
-      if (liked) {
-        userMenuLikes = userMenuLikes.filter(id => id !== menuId);
-        await removeMenuLike(currentUser.uid, menuId);
-        if (heartEl) { heartEl.innerHTML = ICONS.heart; heartEl.setAttribute('aria-pressed', 'false'); }
-        showToast("좋아요 취소");
-      } else {
-        userMenuLikes.push(menuId);
-        await addMenuLike(currentUser.uid, menuId, allMenus.find(m => m.id === menuId)?.restaurantId);
-        if (heartEl) { heartEl.innerHTML = ICONS.heartFill; heartEl.setAttribute('aria-pressed', 'true'); }
-        showToast("좋아요!");
-      }
-      // 모달이 열려있으면 메뉴 리스트 하트도 갱신
+      // 하트 UI를 원하는 상태로 그리는 헬퍼 (on=좋아요됨)
+      const paint = (on) => {
+        if (heartEl) { heartEl.innerHTML = on ? ICONS.heartFill : ICONS.heart; heartEl.setAttribute('aria-pressed', String(on)); }
+      };
+      // 낙관적 업데이트 (화면 먼저 변경)
+      if (liked) userMenuLikes = userMenuLikes.filter(id => id !== menuId);
+      else       userMenuLikes.push(menuId);
+      paint(!liked);
       updateModalMenuLikes();
+      try {
+        if (liked) await removeMenuLike(currentUser.uid, menuId);
+        else       await addMenuLike(currentUser.uid, menuId, allMenus.find(m => m.id === menuId)?.restaurantId);
+        showToast(liked ? "좋아요 취소" : "좋아요!");
+      } catch (err) {
+        // 저장 실패 → 원래 상태로 롤백
+        console.error(err);
+        if (liked) userMenuLikes.push(menuId);
+        else       userMenuLikes = userMenuLikes.filter(id => id !== menuId);
+        paint(liked);
+        updateModalMenuLikes();
+        showToast("저장에 실패했어요. 다시 시도해주세요");
+      }
     };
 
     // ── 모달 열기 ──
@@ -687,8 +711,9 @@
         closed:  { text: "영업종료",    cls: "badge-closed"  },
         dayoff: { text: "휴무일",      cls: "badge-dayoff" },
       };
-      badge.textContent = statusMap[status].text;
-      badge.className   = `badge ${statusMap[status].cls}`;
+      const st = statusMap[status] || statusMap.closed;
+      badge.textContent = st.text;
+      badge.className   = `badge ${st.cls}`;
 
       const distVal = (restaurant.lat && restaurant.lng)
         ? formatDistance(CONFIG.HANSUNG_LAT, CONFIG.HANSUNG_LNG, restaurant.lat, restaurant.lng)
@@ -708,12 +733,12 @@
         <div class="modal-meta-row">
           <span class="modal-meta-icon">${r.icon}</span>
           <span class="modal-meta-label">${r.label}</span>
-          <span class="modal-meta-value">${r.value}</span>
+          <span class="modal-meta-value">${escapeHtml(r.value)}</span>
         </div>`).join("");
 
       const tagsEl = document.getElementById("modalTags");
       tagsEl.innerHTML = restaurant.tags
-        ? restaurant.tags.split(",").map(t => `<span class="tag">${t.trim()}</span>`).join("")
+        ? restaurant.tags.split(",").map(t => `<span class="tag">${escapeHtml(t.trim())}</span>`).join("")
         : "";
 
       if (!menuCache[restaurantId]) {
@@ -734,11 +759,11 @@
           <div class="menu-item${picked ? ' menu-item--picked' : ''}">
             <div class="menu-item-left">
               ${m.photo
-                ? `<img class="menu-photo" src="${getStorageUrl(m.photo)}" alt="${m.name}" onerror="this.outerHTML='<div class=\\'menu-photo-placeholder\\'>🍽️</div>'" />`
+                ? `<img class="menu-photo" src="${getStorageUrl(m.photo)}" alt="${escapeHtml(m.name)}" onerror="this.outerHTML='<div class=\\'menu-photo-placeholder\\'>🍽️</div>'" />`
                 : `<div class="menu-photo-placeholder">🍽️</div>`}
               <div class="menu-name-wrap">
                 ${picked ? '<span class="menu-pick-badge">✓ 내가 고른 메뉴</span>' : ''}
-                <span class="menu-name">${m.name}</span>
+                <span class="menu-name">${escapeHtml(m.name)}</span>
               </div>
             </div>
             <div class="menu-item-right">
@@ -759,6 +784,9 @@
       if (_sb) _sb.scrollTop = 0;            // 새 식당 열 때 맨 위부터
       document.getElementById("modalOverlay").classList.add("open");
       document.body.style.overflow = "hidden";
+      _lastFocusedBeforeModal = document.activeElement;       // 닫을 때 포커스 복원용
+      const _sheet = document.getElementById("modalSheet");
+      if (_sheet) _sheet.focus();
 
       setTimeout(() => initModalMap(restaurant), 400);
     };
@@ -912,30 +940,68 @@
       document.getElementById("modalRegularLabel").textContent = isRegular ? "단골 ✓" : "단골";
     }
 
+    let _lastFocusedBeforeModal = null;
+
     window.closeModal = function () {
       document.getElementById("modalOverlay").classList.remove("open");
       document.body.style.overflow = "";
+      // 모달 열기 전 포커스로 복원 (키보드 사용성)
+      if (_lastFocusedBeforeModal && _lastFocusedBeforeModal.focus) _lastFocusedBeforeModal.focus();
+      _lastFocusedBeforeModal = null;
     };
 
     window.handleModalOutsideClick = function (e) {
       if (e.target === document.getElementById("modalOverlay")) closeModal();
     };
 
+    // 모달 열려 있을 때: ESC 닫기 + Tab 포커스 트랩
+    document.addEventListener("keydown", (e) => {
+      const overlay = document.getElementById("modalOverlay");
+      if (!overlay || !overlay.classList.contains("open")) return;
+      if (e.key === "Escape") { e.preventDefault(); closeModal(); return; }
+      if (e.key !== "Tab") return;
+      const sheet = document.getElementById("modalSheet");
+      const focusables = [...sheet.querySelectorAll('a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+        .filter(el => el.offsetParent !== null);
+      if (!focusables.length) return;
+      const first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
+    // role="button"인 div(카드·링크)를 Enter/Space로도 실행 (키보드 접근성)
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const el = document.activeElement;
+      if (el && el.tagName === "DIV" && el.getAttribute("role") === "button") {
+        e.preventDefault();
+        el.click();
+      }
+    });
+
     window.handleModalRegular = async function () {
       if (!currentUser) { showToast("로그인이 필요합니다"); return; }
       if (!currentRestaurant) return;
-      const isRegular = userRegulars.includes(currentRestaurant.id);
-      if (isRegular) {
-        userRegulars = userRegulars.filter(id => id !== currentRestaurant.id);
-        await removeRegular(currentUser.uid, currentRestaurant.id);
-        showToast("단골 해제");
-      } else {
-        userRegulars.push(currentRestaurant.id);
-        await addRegular(currentUser.uid, currentRestaurant.id);
-        showToast("단골 등록");
-      }
+      const rid       = currentRestaurant.id;
+      const isRegular = userRegulars.includes(rid);
+      // 낙관적 업데이트
+      if (isRegular) userRegulars = userRegulars.filter(id => id !== rid);
+      else           userRegulars.push(rid);
       updateModalRegularBtn();
       renderGrid();
+      try {
+        if (isRegular) await removeRegular(currentUser.uid, rid);
+        else           await addRegular(currentUser.uid, rid);
+        showToast(isRegular ? "단골 해제" : "단골 등록");
+      } catch (err) {
+        // 저장 실패 → 롤백
+        console.error(err);
+        if (isRegular) userRegulars.push(rid);
+        else           userRegulars = userRegulars.filter(id => id !== rid);
+        updateModalRegularBtn();
+        renderGrid();
+        showToast("저장에 실패했어요. 다시 시도해주세요");
+      }
     };
 
     window.openKakaoMap = function () {
